@@ -9,11 +9,12 @@ import (
 )
 
 type Config struct {
-	Address     string
-	ServiceName string
-	Namespace   string
-	TTL         time.Duration
-	DialTimeout time.Duration
+	ServiceName       string
+	Address           string
+	AdvertisedAddress string
+	Namespace         string
+	TTL               time.Duration
+	DialTimeout       time.Duration
 }
 
 type Service struct {

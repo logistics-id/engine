@@ -35,15 +35,19 @@ func NewServer(config *Config, logger *zap.Logger, register func(*grpc.Server)) 
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	if err := s.reg.Register(ctx, s.config.ServiceName, s.config.Address, s.config.TTL); err != nil {
+	if err := s.reg.Register(ctx, s.config.ServiceName, s.config.AdvertisedAddress, s.config.TTL); err != nil {
 		s.log.Fatal("gRPC/REGISTRY FAILED", zap.Error(err))
 	}
 
+	go s.reg.Heartbeat(ctx, s.config.ServiceName, s.config.AdvertisedAddress, s.config.TTL)
+
 	s.log.Info("gRPC/SRV starting", zap.String("addr", s.config.Address))
 
-	if err := s.server.Serve(s.listener); err != nil {
-		s.log.Fatal("gRPC/SERVE FAILED", zap.Error(err))
-	}
+	go func() {
+		if err := s.server.Serve(s.listener); err != nil {
+			s.log.Fatal("gRPC/SERVE FAILED", zap.Error(err))
+		}
+	}()
 
 	<-ctx.Done()
 	s.Shutdown(ctx)
@@ -53,7 +57,7 @@ func (s *Server) Start(ctx context.Context) error {
 func (s *Server) Shutdown(ctx context.Context) {
 	s.log.Info("gRPC/SRV shutting down")
 
-	if err := s.reg.Unregister(ctx, s.config.ServiceName, s.config.Address); err != nil {
+	if err := s.reg.Unregister(ctx, s.config.ServiceName, s.config.AdvertisedAddress); err != nil {
 		s.log.Error("gRPC/DEREGISTER FAILED", zap.Error(err))
 	}
 
