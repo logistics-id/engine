@@ -89,7 +89,7 @@ func NewZapServerLogger(log *zap.Logger) grpc.UnaryServerInterceptor {
 
 		var reqID string
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
-			vals := md.Get("request_id")
+			vals := md.Get("x-request-id")
 			if len(vals) > 0 {
 				reqID = vals[0]
 			}
@@ -103,6 +103,9 @@ func NewZapServerLogger(log *zap.Logger) grpc.UnaryServerInterceptor {
 		}
 
 		start := time.Now()
+
+		// ctx = context.WithC
+		ctx = context.WithValue(ctx, "request_id", reqID)
 
 		resp, err = handler(ctx, req)
 

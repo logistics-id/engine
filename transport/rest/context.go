@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -8,6 +9,7 @@ import (
 )
 
 type Context struct {
+	context.Context
 	Response http.ResponseWriter
 	Request  *http.Request
 }

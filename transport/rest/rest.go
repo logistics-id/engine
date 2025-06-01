@@ -36,12 +36,12 @@ func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *Res
 
 	// Standard 404 and 405 handling
 	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := &Context{Request: r, Response: w}
+		ctx := &Context{Context: r.Context(), Request: r, Response: w}
 		_ = ctx.Error(http.StatusNotFound, MsgNotFound, nil)
 	})
 
 	r.MethodNotAllowedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := &Context{Request: r, Response: w}
+		ctx := &Context{Context: r.Context(), Request: r, Response: w}
 		_ = ctx.Error(http.StatusMethodNotAllowed, Message("method not allowed"), nil)
 	})
 
@@ -97,7 +97,12 @@ func (s *RestServer) Shutdown(ctx context.Context) {
 // Generic route handler with middleware support
 func (s *RestServer) handle(method, path string, handler HandlerFunc, mws []func(http.Handler) http.Handler) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := &Context{Request: r, Response: w}
+		ctx := &Context{
+			Context:  r.Context(),
+			Request:  r,
+			Response: w,
+		}
+
 		if err := handler(ctx); err != nil {
 			var httpErr HTTPError
 			if errors.As(err, &httpErr) {

@@ -16,8 +16,7 @@ import (
 type ctxKey string
 
 const (
-	requestIDKey ctxKey = "request_id"
-	userKey      ctxKey = "user"
+	userKey ctxKey = "user"
 )
 
 type CustomClaims struct {
@@ -26,12 +25,11 @@ type CustomClaims struct {
 	jwt.RegisteredClaims
 }
 
-// ✅ Request ID Middleware
 func RequestIDMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqID := uuid.New().String()
-			ctx := context.WithValue(r.Context(), requestIDKey, reqID)
+			ctx := context.WithValue(r.Context(), "request_id", reqID)
 			r = r.WithContext(ctx)
 			w.Header().Set("X-Request-ID", reqID)
 			next.ServeHTTP(w, r)
@@ -39,12 +37,11 @@ func RequestIDMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-// ✅ Logging Middleware
 func LoggingMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			reqID := r.Context().Value(requestIDKey)
+			reqID := r.Context().Value("request_id")
 
 			next.ServeHTTP(w, r)
 
@@ -60,7 +57,6 @@ func LoggingMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// ✅ Panic Recovery Middleware
 func RecoveryMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +74,6 @@ func RecoveryMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// ✅ CORS Middleware
 func CORSMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +89,6 @@ func CORSMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-// ✅ JWT Middleware
 func JWTAuthMiddleware(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +101,7 @@ func JWTAuthMiddleware(secret string) func(http.Handler) http.Handler {
 			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 			claims := &CustomClaims{}
 
-			token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
+			token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
 				return []byte(secret), nil
 			})
 
@@ -122,7 +116,6 @@ func JWTAuthMiddleware(secret string) func(http.Handler) http.Handler {
 	}
 }
 
-// ✅ Role-based Access Middleware
 func RequireRole(role string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -136,13 +129,11 @@ func RequireRole(role string) func(http.Handler) http.Handler {
 	}
 }
 
-// ✅ FromContext extracts JWT claims
 func FromContext(r *http.Request) *CustomClaims {
 	claims, _ := r.Context().Value(userKey).(*CustomClaims)
 	return claims
 }
 
-// ✅ Utility to chain middlewares
 func chainMiddleware(h http.Handler, mws []func(http.Handler) http.Handler) http.Handler {
 	for i := len(mws) - 1; i >= 0; i-- {
 		h = mws[i](h)

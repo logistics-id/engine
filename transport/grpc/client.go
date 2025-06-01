@@ -107,13 +107,15 @@ func NewZapClientLogger(log *zap.Logger) grpc.UnaryClientInterceptor {
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption,
 	) error {
-		var reqID string
-		if md, ok := metadata.FromOutgoingContext(ctx); ok {
-			vals := md.Get("request_id")
-			if len(vals) > 0 {
-				reqID = vals[0]
-			}
-		}
+
+		reqID := ctx.Value("request_id").(string)
+
+		// if md, ok := metadata.FromOutgoingContext(ctx); ok {
+		// 	vals := md.Get("request_id")
+		// 	if len(vals) > 0 {
+		// 		reqID = vals[0]
+		// 	}
+		// }
 
 		var reqPayload string
 		if pb, ok := req.(proto.Message); ok {
@@ -121,6 +123,9 @@ func NewZapClientLogger(log *zap.Logger) grpc.UnaryClientInterceptor {
 				reqPayload = string(b)
 			}
 		}
+
+		md := metadata.Pairs("x-request-id", reqID)
+		ctx = metadata.NewOutgoingContext(ctx, md)
 
 		start := time.Now()
 		err := invoker(ctx, method, req, reply, cc, opts...)
