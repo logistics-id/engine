@@ -95,11 +95,9 @@ func NewZapServerLogger(log *zap.Logger) grpc.UnaryServerInterceptor {
 			}
 		}
 
-		var reqPayload string
+		var reqPayload []byte
 		if pb, ok := req.(proto.Message); ok {
-			if b, err := json.Marshal(pb); err == nil {
-				reqPayload = string(b)
-			}
+			reqPayload, _ = json.Marshal(pb)
 		}
 
 		start := time.Now()
@@ -109,11 +107,9 @@ func NewZapServerLogger(log *zap.Logger) grpc.UnaryServerInterceptor {
 
 		resp, err = handler(ctx, req)
 
-		var respPayload string
+		var respPayload []byte
 		if pb, ok := resp.(proto.Message); ok {
-			if b, err := json.Marshal(pb); err == nil {
-				respPayload = string(b)
-			}
+			respPayload, err = json.Marshal(pb)
 		}
 
 		log.Info("GRPC/SERVER",
@@ -121,8 +117,8 @@ func NewZapServerLogger(log *zap.Logger) grpc.UnaryServerInterceptor {
 			zap.String("method", info.FullMethod),
 			zap.String("peer", peerAddr),
 			zap.String("request_id", reqID),
-			zap.String("payload", reqPayload),
-			zap.String("response", respPayload),
+			zap.Any("payload", json.RawMessage(reqPayload)),
+			zap.Any("response", json.RawMessage(respPayload)),
 			zap.Duration("duration", time.Since(start)),
 			zap.Error(err),
 		)

@@ -33,6 +33,7 @@ func NewClient(ctx context.Context, serviceName string) (*Client, error) {
 	log := Service.logger.With(
 		zap.String("action", "client"),
 		zap.String("service_name", serviceName),
+		zap.String("request_id", ctx.Value("request_id").(string)),
 	)
 
 	reg := Service.registry
@@ -102,7 +103,7 @@ func NewZapClientLogger(log *zap.Logger) grpc.UnaryClientInterceptor {
 	return func(
 		ctx context.Context,
 		method string,
-		req, reply interface{},
+		req, reply any,
 		cc *grpc.ClientConn,
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption,
@@ -110,18 +111,9 @@ func NewZapClientLogger(log *zap.Logger) grpc.UnaryClientInterceptor {
 
 		reqID := ctx.Value("request_id").(string)
 
-		// if md, ok := metadata.FromOutgoingContext(ctx); ok {
-		// 	vals := md.Get("request_id")
-		// 	if len(vals) > 0 {
-		// 		reqID = vals[0]
-		// 	}
-		// }
-
-		var reqPayload string
+		var reqPayload []byte
 		if pb, ok := req.(proto.Message); ok {
-			if b, err := json.Marshal(pb); err == nil {
-				reqPayload = string(b)
-			}
+			reqPayload, _ = json.Marshal(pb)
 		}
 
 		md := metadata.Pairs("x-request-id", reqID)
@@ -130,19 +122,17 @@ func NewZapClientLogger(log *zap.Logger) grpc.UnaryClientInterceptor {
 		start := time.Now()
 		err := invoker(ctx, method, req, reply, cc, opts...)
 
-		var respPayload string
+		var respPayload []byte
 		if pb, ok := reply.(proto.Message); ok {
-			if b, err := json.Marshal(pb); err == nil {
-				respPayload = string(b)
-			}
+			respPayload, err = json.Marshal(pb)
 		}
 
 		log.Info("GRPC/CLIENT",
 			zap.String("method", method),
 			zap.String("service_host", cc.Target()),
 			zap.String("request_id", reqID),
-			zap.String("payload", reqPayload),
-			zap.String("response", respPayload),
+			zap.Any("payload", json.RawMessage(reqPayload)),
+			zap.Any("response", json.RawMessage(respPayload)),
 			zap.Duration("duration", time.Duration(time.Since(start))),
 			zap.Error(err),
 		)

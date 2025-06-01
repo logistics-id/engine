@@ -189,7 +189,7 @@ func (c *Client) Publish(ctx context.Context, topic string, data any) error {
 		return fmt.Errorf("RMQ/PUB: marshal error %w", err)
 	}
 
-	requestID, _ := ctx.Value("X-Request-ID").(string)
+	requestID, _ := ctx.Value("request_id").(string)
 	headers := amqp.Table{}
 	if requestID != "" {
 		headers["X-Request-ID"] = requestID
@@ -310,7 +310,7 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 		closeChan := make(chan *amqp.Error)
 		ch.NotifyClose(closeChan)
 
-		logger.Info("RMQ/SUBS STARTED")
+		logger.Debug("RMQ/SUBS STARTED")
 
 		// Message processing loop
 		processDone := make(chan error, 1)

@@ -128,8 +128,9 @@ func ErrNotInitialized() error {
 }
 
 func getReqID(ctx context.Context) zap.Field {
-	if reqID, ok := ctx.Value("X-Request-ID").(string); ok && reqID != "" {
+	if reqID, ok := ctx.Value("request_id").(string); ok && reqID != "" {
 		return zap.String("request_id", reqID)
 	}
+
 	return zap.String("request_id", "unknown")
 }
