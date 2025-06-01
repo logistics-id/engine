@@ -117,7 +117,7 @@ func commandMap(c bson.Raw) map[string]any {
 func monitoring() *event.CommandMonitor {
 	return &event.CommandMonitor{
 		Started: func(ctx context.Context, evt *event.CommandStartedEvent) {
-			if evt.CommandName != "ping" {
+			if evt.CommandName != "ping" && evt.CommandName != "endSessions" {
 				reqID, _ := ctx.Value("X-Request-ID").(string)
 
 				logger.Info("MGO/CMD EXEC",

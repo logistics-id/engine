@@ -34,7 +34,7 @@ func ConfigDefault(prefix string) *Config {
 }
 
 func NewConnection(cfg *Config, logger *zap.Logger) error {
-	c, err := NewClient(cfg, logger)
+	c, err := NewClient(cfg, logger.With(zap.String("component", "broker.rabbitmq")))
 	if err == nil {
 		defaultClient = c
 	}

@@ -17,31 +17,40 @@ type Config struct {
 	DialTimeout       time.Duration
 }
 
-type Service struct {
-	Server *Server
-	Client *Client
-	config *Config
-	logger *zap.Logger
+type service struct {
+	Server   *Server
+	config   *Config
+	logger   *zap.Logger
+	registry ServiceRegistry
 }
 
-func NewService(config *Config, logger *zap.Logger, register func(*grpc.Server)) *Service {
-	return &Service{
-		Server: NewServer(config, logger.Named("grpc"), register),
-		config: config,
-		logger: logger.Named("grpc"),
+var Service *service
+
+func NewService(config *Config, logger *zap.Logger, register func(*grpc.Server)) *service {
+	config.TTL = 30 * time.Second
+	config.DialTimeout = 5 * time.Second
+
+	logger = logger.With(zap.String("component", "transport.grpc"))
+
+	reg := NewRedisRegistry(config.Namespace, config.TTL)
+	Service = &service{
+		Server:   NewServer(config, logger, reg, register),
+		config:   config,
+		logger:   logger,
+		registry: reg,
 	}
+
+	return Service
 }
 
-func (s *Service) Start(ctx context.Context) {
+func (s *service) Start(ctx context.Context) {
 	go s.Server.Start(ctx)
-	s.Client = NewClient(ctx, s.config, s.logger)
 }
 
-func (s *Service) Shutdown(ctx context.Context) {
+func (s *service) Shutdown(ctx context.Context) {
 	s.Server.Shutdown(ctx)
-	if s.Client != nil {
-		if err := s.Client.Close(); err != nil {
-			s.logger.Error("gRPC/CLIENT CLOSE ERROR", zap.Error(err))
-		}
-	}
+}
+
+func (s *service) Registry() ServiceRegistry {
+	return s.registry
 }

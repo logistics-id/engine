@@ -18,6 +18,11 @@ var (
 // NewConnection initializes a new Bun DB connection and sets it as the default.
 // It also adds a zap logger hook and optionally a verbose logger if debug is true.
 func NewConnection(c *Config, l *zap.Logger) (err error) {
+	l = l.With(
+		zap.String("component", "ds.postgres"),
+		zap.String("database", c.Database),
+	)
+
 	client, err = NewClient(c, l)
 
 	return

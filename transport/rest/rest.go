@@ -51,7 +51,10 @@ func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *Res
 	srv := &RestServer{
 		Router: r,
 		Config: cfg,
-		Log:    logger.Named("rest"),
+		Log: logger.With(
+			zap.String("component", "transport.rest"),
+			zap.String("action", "server"),
+		),
 	}
 
 	// Register application routes
@@ -71,30 +74,23 @@ func (s *RestServer) Start(ctx context.Context) {
 	}
 
 	// Start the server
-	go func() {
-		s.Log.Info("starting REST server", zap.String("addr", s.Config.Server))
-		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			s.Log.Fatal("REST/SRV", zap.Error(err))
-		}
-	}()
+	s.Log.Info("REST/SERVER STARTED", zap.String("addr", s.Config.Server))
+	if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		s.Log.Error("REST/SERVER", zap.Error(err))
+	}
 
 	// Shutdown listener
-	go func() {
-		<-ctx.Done()
-		s.Shutdown(nil)
-	}()
+	<-ctx.Done()
+	s.Shutdown(ctx)
 }
 
 // Shutdown explicitly shuts down the server
-func (s *RestServer) Shutdown(_ error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	s.Log.Info("REST/SRV Shutting Down")
+func (s *RestServer) Shutdown(ctx context.Context) {
+	s.Log.Debug("REST/SERVER Shutting Down")
 	if shutdownErr := s.srv.Shutdown(ctx); shutdownErr != nil {
-		s.Log.Error("REST/SRV shutdown error", zap.Error(shutdownErr))
+		s.Log.Error("REST/SERVER shutdown error", zap.Error(shutdownErr))
 	} else {
-		s.Log.Info("REST/SRV server shut down cleanly")
+		s.Log.Debug("REST/SERVER server shut down cleanly")
 	}
 }
 

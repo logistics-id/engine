@@ -48,13 +48,13 @@ func LoggingMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 
 			next.ServeHTTP(w, r)
 
-			duration := time.Since(start)
-			logger.Info("REST/REQ",
+			logger.Info("REST/SERVER",
+				zap.String("action", "request"),
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
 				zap.String("remote", r.RemoteAddr),
 				zap.String("request_id", fmt.Sprint(reqID)),
-				zap.Duration("duration", duration),
+				zap.Duration("duration", time.Since(start)),
 			)
 		})
 	}

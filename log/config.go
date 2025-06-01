@@ -1,19 +1,34 @@
 package log
 
 import (
-	"fmt"
-	"time"
+	"os"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-func BuildLogger(isDev bool) *zap.Logger {
-	logger, _ := zapConfig(isDev).Build()
-	return logger
+// NewLogger creates a named logger using the global config.
+func NewLogger(name string, isDev bool) *zap.Logger {
+	var logger *zap.Logger
+
+	if isDev {
+		logger = consoleLogger()
+	} else {
+		logger = jsonLogger()
+	}
+
+	return logger.Named(os.Getenv("PLATFORM")).Named(name)
 }
 
-func zapConfig(isDev bool) zap.Config {
+func initialFields() map[string]any {
+	hostname, _ := os.Hostname()
+
+	return map[string]any{
+		"host": hostname,
+	}
+}
+
+func jsonLogger() *zap.Logger {
 	cfg := zap.Config{
 		Level:            zap.NewAtomicLevelAt(zap.InfoLevel),
 		Development:      false,
@@ -23,7 +38,7 @@ func zapConfig(isDev bool) zap.Config {
 		EncoderConfig: zapcore.EncoderConfig{
 			TimeKey:        "ts",
 			LevelKey:       "lvl",
-			NameKey:        "eng",
+			NameKey:        "service",
 			CallerKey:      "caller",
 			MessageKey:     "msg",
 			StacktraceKey:  "trace",
@@ -33,49 +48,40 @@ func zapConfig(isDev bool) zap.Config {
 			EncodeDuration: zapcore.SecondsDurationEncoder,
 			EncodeCaller:   zapcore.ShortCallerEncoder,
 		},
+		InitialFields: initialFields(),
 	}
 
-	if isDev {
-		cfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
-		cfg.Development = true
-		cfg.Encoding = "console"
-		cfg.EncoderConfig = zapcore.EncoderConfig{
-			NameKey:      "log",
-			MessageKey:   "message",
-			TimeKey:      "time",
-			LevelKey:     "level",
-			CallerKey:    "file",
-			EncodeTime:   customTimeEncoder,
-			EncodeLevel:  customLevelEncoder,
-			EncodeCaller: customCallerEncoder,
-		}
+	logger, _ := cfg.Build()
+
+	return logger
+}
+
+func consoleLogger() *zap.Logger {
+	cfg := zap.Config{
+		Level:            zap.NewAtomicLevelAt(zap.DebugLevel),
+		Development:      true,
+		Encoding:         "console",
+		OutputPaths:      []string{"stderr"},
+		ErrorOutputPaths: []string{"stderr"},
+		EncoderConfig: zapcore.EncoderConfig{
+			NameKey:    "service",
+			EncodeName: customNameEncoder,
+
+			MessageKey: "message",
+
+			TimeKey:    "time",
+			EncodeTime: customTimeEncoder,
+
+			LevelKey:    "level",
+			EncodeLevel: customLevelEncoder,
+
+			CallerKey:      "caller",
+			EncodeCaller:   customCallerEncoder,
+			EncodeDuration: zapcore.SecondsDurationEncoder,
+		},
 	}
 
-	return cfg
-}
+	logger, _ := cfg.Build()
 
-// Custom encoders
-func customTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	enc.AppendString(ColorGray(t.Format("02/01 15:04:05")))
-}
-
-func customLevelEncoder(level zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
-	enc.AppendString(colorized(level))
-}
-
-func customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
-	enc.AppendString(ColorGray(fmt.Sprintf("@%s", caller.TrimmedPath())))
-}
-
-func colorized(level zapcore.Level) string {
-	switch level {
-	case zapcore.DebugLevel:
-		return ColorGreen(level.CapitalString())
-	case zapcore.InfoLevel:
-		return ColorWhite(Bold(level.CapitalString()))
-	case zapcore.WarnLevel:
-		return ColorGray(Bold(level.CapitalString()))
-	default: // Error, DPanic, Panic, Fatal
-		return ColorRed(Bold(level.CapitalString()))
-	}
+	return logger
 }

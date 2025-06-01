@@ -32,7 +32,7 @@ var (
 // Start initializes the service configuration and logger.
 func Start(cfg *Config) *Config {
 	Service = cfg
-	Logger = NewLogger(cfg.Name)
+	Logger = log.NewLogger(cfg.Name, cfg.IsDev)
 	Logger.Info(fmt.Sprintf("Starting Service: %s", Service.Name))
 
 	return Service
@@ -50,11 +50,6 @@ func Shutdown(cancel context.CancelFunc) {
 
 	// Give some time for graceful shutdown
 	time.Sleep(6 * time.Second)
-}
-
-// NewLogger creates a named logger using the global config.
-func NewLogger(name string) *zap.Logger {
-	return log.BuildLogger(Service.IsDev).Named(name).With(zap.String("host", Service.Host))
 }
 
 // SignalDependenciesReady should be called once after dependencies are ready

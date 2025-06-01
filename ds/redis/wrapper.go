@@ -24,6 +24,12 @@ func NewConnection(cfg *Config, l *zap.Logger) error {
 		},
 	}
 
+	l = l.With(
+		zap.String("component", "ds.redis"),
+		zap.String("dsn", fmt.Sprintf("%s@%s", cfg.Server, cfg.Prefix)),
+		zap.String("database", cfg.Prefix),
+	)
+
 	cache = &Redis{
 		Prefix: cfg.Prefix,
 		Pool:   pool,
@@ -31,11 +37,11 @@ func NewConnection(cfg *Config, l *zap.Logger) error {
 	}
 
 	if err := cache.Ping(); err != nil {
-		l.Fatal("RED/CONN FAILED", zap.Any("config", cfg), zap.Error(err))
+		l.Error("RED/CONN FAILED", zap.Error(err))
 		return err
 	}
 
-	l.Info("RED/CONN CONNECTED", zap.String("dsn", fmt.Sprintf("%s@%s", cfg.Server, cfg.Prefix)))
+	l.Info("RED/CONN CONNECTED")
 
 	return nil
 }
@@ -54,7 +60,7 @@ func Save(ctx context.Context, key string, value any) error {
 	err := cache.Save(key, value)
 
 	cache.Logger.Info("RED/QUERY",
-		zap.String("query", "save"),
+		zap.String("action", "save"),
 		zap.String("key", key),
 		zap.Duration("duration", time.Since(started)),
 		getReqID(ctx),
@@ -74,7 +80,7 @@ func Read(ctx context.Context, key string, out any) error {
 	err := cache.Read(key, out)
 
 	cache.Logger.Info("RED/QUERY",
-		zap.String("query", "read"),
+		zap.String("action", "read"),
 		zap.String("key", key),
 		zap.Duration("duration", time.Since(started)),
 		getReqID(ctx),
@@ -98,7 +104,7 @@ func Delete(ctx context.Context, key string) error {
 	err := cache.Delete(key)
 
 	cache.Logger.Info("RED/QUERY",
-		zap.String("query", "delete"),
+		zap.String("action", "delete"),
 		zap.String("key", key),
 		zap.Duration("duration", time.Since(started)),
 		getReqID(ctx),

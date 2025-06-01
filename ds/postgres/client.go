@@ -25,11 +25,15 @@ type Client struct {
 }
 
 func NewClient(cfg *Config, l *zap.Logger) (*Client, error) {
+	l = l.With(
+		zap.String("dsn", cfg.Datasource),
+		zap.String("database", cfg.Database),
+	)
 
 	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(cfg.Datasource)))
 
 	if err := sqldb.Ping(); err != nil {
-		l.Fatal("PG/CONN FAILED", zap.String("dsn", cfg.Datasource), zap.Any("config", cfg), zap.Error(err))
+		l.Error("PG/CONN FAILED", zap.Error(err))
 
 		return nil, err
 	}
@@ -39,7 +43,7 @@ func NewClient(cfg *Config, l *zap.Logger) (*Client, error) {
 	// Add custom zap logger for query hooks
 	db.AddQueryHook(&ZapQueryHook{Logger: l})
 
-	l.Info("PG/CONN CONNECTED", zap.String("dsn", cfg.Datasource))
+	l.Info("PG/CONN CONNECTED", zap.String("action", "connection"))
 
 	return &Client{
 		db:     db,

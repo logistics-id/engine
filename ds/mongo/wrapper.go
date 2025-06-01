@@ -38,7 +38,11 @@ func (c *Config) setDefault() {
 func NewConnection(c *Config, l *zap.Logger) error {
 	c.setDefault()
 
-	logger = l
+	logger = l.With(
+		zap.String("component", "ds.mongodb"),
+		zap.String("dsn", c.Datasource),
+		zap.String("database", c.Database),
+	)
 
 	clientOpts := options.Client().
 		ApplyURI(c.Datasource).
@@ -49,19 +53,19 @@ func NewConnection(c *Config, l *zap.Logger) error {
 	client, err := mongo.Connect(ctx, clientOpts)
 
 	if err != nil {
-		l.Fatal("MGO/CONN FAILED", zap.String("dsn", c.Datasource), zap.Any("config", c), zap.Error(err))
+		logger.Error("MGO/CONN FAILED", zap.Error(err))
 		return err
 	}
 
 	err = client.Ping(ctx, nil)
 	if err != nil {
-		l.Fatal("MGO/CONN FAILURE", zap.String("dsn", c.Datasource), zap.Any("config", c), zap.Error(err))
+		logger.Error("MGO/CONN FAILURE", zap.Error(err))
 		return err
 	}
 
 	defaultDB = client.Database(c.Database)
 
-	l.Info("MGO/CONN CONNECTED", zap.String("dsn", c.Datasource), zap.String("database", c.Database))
+	logger.Info("MGO/CONN CONNECTED")
 
 	return nil
 }

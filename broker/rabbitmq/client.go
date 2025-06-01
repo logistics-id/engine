@@ -73,16 +73,23 @@ func NewClient(cfg *Config, logger *zap.Logger) (*Client, error) {
 
 // connect establishes a new connection and channel to RabbitMQ
 func (c *Client) connect() error {
+	logger := c.logger.With(
+		zap.String("action", "connection"),
+		zap.String("exchange", c.exchange),
+		zap.String("dsn", c.config.Datasource),
+	)
+
 	conn, err := amqp.Dial(c.config.Datasource)
+
 	if err != nil {
-		c.logger.Error("RMQ/CONNECT FAILED", zap.String("dsn", c.config.Datasource), zap.Error(err))
+		logger.Error("RMQ/CONN FAILED", zap.Error(err))
 		return err
 	}
 
 	ch, err := conn.Channel()
 	if err != nil {
 		conn.Close()
-		c.logger.Error("RMQ/CHANNEL FAILED", zap.Error(err))
+		logger.Error("RMQ/CONN CHANNEL FAILED", zap.Error(err))
 		return err
 	}
 
@@ -96,7 +103,7 @@ func (c *Client) connect() error {
 	if err != nil {
 		ch.Close()
 		conn.Close()
-		c.logger.Error("RMQ/EXCHANGE DECLARE FAILED", zap.Error(err))
+		logger.Error("RMQ/CONN EXCHANGE DECLARE FAILED", zap.Error(err))
 		return err
 	}
 
@@ -105,7 +112,7 @@ func (c *Client) connect() error {
 	c.channel = ch
 	c.mu.Unlock()
 
-	c.logger.Info("RMQ/CONNECTED", zap.String("exchange", c.exchange))
+	logger.Info("RMQ/CONN CONNECTED")
 	return nil
 }
 
@@ -116,7 +123,7 @@ func (c *Client) monitorConnection() {
 		select {
 		case err := <-connClose:
 			if err != nil {
-				c.logger.Warn("RMQ/CONNECTION CLOSED", zap.Error(err))
+				c.logger.Warn("RMQ/CONN CLOSED", zap.Error(err))
 				// Try reconnect but exit if ctx cancelled
 				c.reconnect()
 				return
@@ -141,9 +148,9 @@ func (c *Client) reconnect() {
 		}
 
 		time.Sleep(3 * time.Second)
-		c.logger.Info("RMQ/RECONNECTING...")
+		c.logger.Debug("RMQ/CONN RECONNECTING...")
 		if err := c.connect(); err == nil {
-			c.logger.Info("RMQ/RECONNECTED")
+			c.logger.Debug("RMQ/CONN RECONNECTED")
 
 			// Resubscribe all previous subscribers
 			for _, sub := range c.subscribers {
@@ -164,9 +171,16 @@ func (c *Client) Publish(ctx context.Context, topic string, data any) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	start := time.Now()
+	logger := c.logger.With(
+		zap.String("action", "publish"),
+		zap.String("exchange", c.exchange),
+		zap.String("dsn", c.config.Datasource),
+	)
+
 	// Auto reconnect if connection/channel closed
 	if c.conn == nil || c.conn.IsClosed() || c.channel == nil || c.channel.IsClosed() {
-		c.logger.Warn("RMQ/PUB: connection or channel closed, reconnecting")
+		logger.Debug("RMQ/PUB connection or channel closed, reconnecting")
 		c.reconnect()
 	}
 
@@ -193,19 +207,20 @@ func (c *Client) Publish(ctx context.Context, topic string, data any) error {
 		},
 	)
 
-	fields := []zap.Field{
+	duration := time.Since(start)
+	logger = logger.With(
 		zap.String("topic", topic),
 		zap.Any("request_id", requestID),
 		zap.Any("payload", json.RawMessage(body)),
-	}
+		zap.Duration("duration", duration),
+	)
 
 	if err != nil {
-		fields = append(fields, zap.Error(err))
-		c.logger.Error("RMQ/PUB FAILED", fields...)
+		logger.Error("RMQ/PUB FAILED", zap.Error(err))
 		return err
 	}
 
-	c.logger.Info("RMQ/PUB", fields...)
+	logger.Info("RMQ/PUB SUCCEED")
 	return nil
 }
 
@@ -225,11 +240,20 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 	defer c.wg.Done()
 
 	backoff := time.Second
+	argName := runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name()
+	logger := c.logger.With(
+		zap.String("action", "subscribe"),
+		zap.String("exchange", c.exchange),
+		zap.String("dsn", c.config.Datasource),
+		zap.String("queue", queue),
+		zap.String("routing_key", routingKey),
+		zap.String("handler", argName),
+	)
 
 	for {
 		select {
 		case <-c.ctx.Done():
-			c.logger.Info("RMQ/SUB: shutting down subscriber", zap.String("queue", queue), zap.String("routingKey", routingKey))
+			logger.Debug("RMQ/SUB: shutting down subscriber")
 			return
 		default:
 		}
@@ -239,14 +263,14 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 		c.mu.Unlock()
 
 		if conn == nil || conn.IsClosed() {
-			c.logger.Warn("RMQ/SUB: waiting for connection...")
+			logger.Warn("RMQ/SUB: waiting for connection...")
 			time.Sleep(backoff)
 			continue
 		}
 
 		ch, err := conn.Channel()
 		if err != nil {
-			c.logger.Error("RMQ/SUB: failed to create channel", zap.Error(err))
+			logger.Error("RMQ/SUB: failed to create channel", zap.Error(err))
 			time.Sleep(backoff)
 			continue
 		}
@@ -261,7 +285,7 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 
 		q, err := ch.QueueDeclare(queue, c.config.Durable, false, false, false, args)
 		if err != nil {
-			c.logger.Error("RMQ/SUB: queue declare failed", zap.Error(err))
+			logger.Error("RMQ/SUB: queue declare failed", zap.Error(err))
 			ch.Close()
 			time.Sleep(backoff)
 			continue
@@ -269,7 +293,7 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 
 		err = ch.QueueBind(q.Name, routingKey, c.exchange, false, nil)
 		if err != nil {
-			c.logger.Error("RMQ/SUB: queue bind failed", zap.Error(err))
+			logger.Error("RMQ/SUB: queue bind failed", zap.Error(err))
 			ch.Close()
 			time.Sleep(backoff)
 			continue
@@ -277,7 +301,7 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 
 		msgs, err := ch.Consume(q.Name, "", false, false, false, false, nil)
 		if err != nil {
-			c.logger.Error("RMQ/SUB: consume failed", zap.Error(err))
+			logger.Error("RMQ/SUB: consume failed", zap.Error(err))
 			ch.Close()
 			time.Sleep(backoff)
 			continue
@@ -286,15 +310,7 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 		closeChan := make(chan *amqp.Error)
 		ch.NotifyClose(closeChan)
 
-		argName := runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name()
-
-		var fields = []zap.Field{
-			zap.String("queue", queue),
-			zap.String("topic", routingKey),
-			zap.String("handler", argName),
-		}
-
-		c.logger.Info("RMQ/SUBS STARTED", fields...)
+		logger.Info("RMQ/SUBS STARTED")
 
 		// Message processing loop
 		processDone := make(chan error, 1)
@@ -303,26 +319,21 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 				requestID := d.Headers["X-Request-ID"]
 
 				raw := json.RawMessage(string(d.Body))
+				start := time.Now()
 
-				var fields = []zap.Field{
-					zap.String("queue", queue),
-					zap.String("topic", routingKey),
+				logger = logger.With(
 					zap.String("message_id", d.MessageId),
 					zap.Any("request_id", requestID),
 					zap.Any("payload", &raw),
-					zap.String("handler", argName),
-				}
+				)
 
 				// Deserialize message payload into expected type
 				target := reflect.New(reflect.TypeOf(handler).In(0)).Interface()
 				if err := json.Unmarshal(d.Body, target); err != nil {
-					fields = append(fields, zap.Error(err))
-					c.logger.Error("RMQ/SUB: json unmarshal failed", fields...)
+					logger.Error("RMQ/SUB: json unmarshal failed", zap.Error(err))
 					d.Nack(false, false) // reject without requeue
 					continue
 				}
-
-				c.logger.Info("RMQ/SUB", fields...)
 
 				// Call user handler func(msg any, delivery amqp.Delivery)
 				// using reflection to invoke
@@ -331,12 +342,17 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 					reflect.ValueOf(d),
 				})
 
+				duration := time.Since(start)
+				logger = logger.With(zap.Duration("duration", duration))
+
 				// If handler returns error (last return), check it
 				if len(results) == 1 {
 					if err, ok := results[0].Interface().(error); ok && err != nil {
-						c.logger.Error("RMQ/SUB: handler returned error", zap.Error(err))
+						logger.Error("RMQ/SUB: handler returned error", zap.Error(err))
 						d.Nack(false, true) // requeue on handler error
 						continue
+					} else {
+						logger.Info("RMQ/SUB SUCCEED")
 					}
 				}
 			}
@@ -347,14 +363,14 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 		select {
 		case err := <-closeChan:
 			if err != nil {
-				c.logger.Warn("RMQ/SUB: channel closed with error", fields...)
+				logger.Warn("RMQ/SUB: channel closed with error", zap.Error(err))
 			} else {
-				c.logger.Debug("RMQ/SUB: channel closed normally", fields...)
+				logger.Debug("RMQ/SUB: channel closed normally")
 			}
 		case <-processDone:
-			c.logger.Debug("RMQ/SUB: message processing ended", fields...)
+			logger.Debug("RMQ/SUB: message processing ended")
 		case <-c.ctx.Done():
-			c.logger.Info("RMQ/SUB: shutting down during message processing", fields...)
+			logger.Info("RMQ/SUB: shutting down during message processing")
 		}
 
 		ch.Close()
@@ -371,21 +387,27 @@ func (c *Client) Close() error {
 	c.cancel()
 	close(c.closed)
 
-	c.logger.Info("RMQ/CLOSING: waiting for subscribers to finish")
+	logger := c.logger.With(
+		zap.String("action", "connection"),
+		zap.String("exchange", c.exchange),
+		zap.String("dsn", c.config.Datasource),
+	)
+
+	logger.Debug("RMQ/CONN CLOSING: waiting for subscribers to finish")
 	c.wg.Wait()
 
 	if c.channel != nil {
 		if err := c.channel.Close(); err != nil {
-			c.logger.Warn("RMQ/CHANNEL CLOSE FAILED", zap.Error(err))
+			logger.Warn("RMQ/CONN CHANNEL CLOSE FAILED", zap.Error(err))
 		}
 	}
 
 	if c.conn != nil {
 		if err := c.conn.Close(); err != nil {
-			c.logger.Warn("RMQ/CONNECTION CLOSE FAILED", zap.Error(err))
+			logger.Warn("RMQ/CONN CLOSE FAILED", zap.Error(err))
 		}
 	}
 
-	c.logger.Info("RMQ/CLOSED")
+	logger.Debug("RMQ/CLOSED")
 	return nil
 }
