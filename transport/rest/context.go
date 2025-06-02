@@ -3,34 +3,104 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/mux"
+	"github.com/logistics-id/engine/validate"
+	"go.uber.org/zap"
 )
 
 type Context struct {
 	context.Context
+
 	Response http.ResponseWriter
 	Request  *http.Request
+
+	validator *validate.Validator
+	logger    *zap.Logger
+	once      sync.Once
 }
 
 // Bind decodes the JSON request body into the given struct
-func (c *Context) Bind(v interface{}) error {
+func (c *Context) Bind(v any) error {
 	if c.Request.Body == nil {
-		return BadRequest("Empty request body")
+		return BadRequest("Invalid request body. Please check your input format.")
 	}
 
 	decoder := json.NewDecoder(c.Request.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(v); err != nil {
-		return BadRequest("Invalid request body: " + err.Error())
+		c.logger.Warn("Bind error", zap.Error(err))
+		return BadRequest("Invalid request body. Please check your input format.")
+	}
+
+	if err := c.Validate(v); !err.Valid {
+		return err
 	}
 
 	return nil
 }
 
+func (c *Context) Validate(obj any) (resp *validate.Response) {
+	c.lazyinit()
+
+	if vr, ok := obj.(validate.Request); ok {
+		resp = c.validator.Request(vr)
+	} else {
+		resp = c.validator.Struct(obj)
+	}
+
+	return
+}
+
+func (c *Context) Respond(data any, err error, meta *Meta) error {
+	if err == nil {
+		// Success response
+		return c.JSON(http.StatusOK, Response{
+			Success: true,
+			Message: string(MsgSuccess),
+			Data:    data,
+			Meta:    meta,
+		})
+	}
+
+	// If it's a structured HTTPError, use its code and message
+	var httpErr HTTPError
+	if errors.As(err, &httpErr) {
+		return c.JSON(httpErr.Code, Response{
+			Success: false,
+			Message: httpErr.Message,
+			Errors:  nil,
+		})
+	}
+
+	if ev, ok := err.(*validate.Response); ok {
+		return c.JSON(422, Response{
+			Success: false,
+			Message: string(MsgValidationError),
+			Errors:  ev.GetMessages(),
+		})
+	}
+
+	// Otherwise, it's an internal error
+	return c.JSON(http.StatusInternalServerError, Response{
+		Success: false,
+		Message: string(MsgInternalError),
+		Errors:  err.Error(),
+	})
+}
+
+// lazyinit initialing validator instances for one of time only.
+func (c *Context) lazyinit() {
+	c.once.Do(func() {
+		c.validator = validate.New()
+	})
+}
+
 // JSON writes a standard JSON response with status code
-func (c *Context) JSON(code int, data interface{}) error {
+func (c *Context) JSON(code int, data any) error {
 	c.Response.Header().Set("Content-Type", "application/json")
 	c.Response.WriteHeader(code)
 	return json.NewEncoder(c.Response).Encode(data)

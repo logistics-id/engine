@@ -26,6 +26,11 @@ type RestServer struct {
 
 // NewServer creates and configures the REST server
 func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *RestServer {
+	logger = logger.With(
+		zap.String("component", "transport.rest"),
+		zap.String("action", "server"),
+	)
+
 	r := mux.NewRouter()
 
 	// Built-in middleware
@@ -36,12 +41,23 @@ func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *Res
 
 	// Standard 404 and 405 handling
 	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := &Context{Context: r.Context(), Request: r, Response: w}
+		ctx := &Context{
+			Context:  r.Context(),
+			Request:  r,
+			Response: w,
+			logger:   logger,
+		}
+
 		_ = ctx.Error(http.StatusNotFound, MsgNotFound, nil)
 	})
 
 	r.MethodNotAllowedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := &Context{Context: r.Context(), Request: r, Response: w}
+		ctx := &Context{
+			Context:  r.Context(),
+			Request:  r,
+			Response: w,
+			logger:   logger,
+		}
 		_ = ctx.Error(http.StatusMethodNotAllowed, Message("method not allowed"), nil)
 	})
 
@@ -51,10 +67,7 @@ func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *Res
 	srv := &RestServer{
 		Router: r,
 		Config: cfg,
-		Log: logger.With(
-			zap.String("component", "transport.rest"),
-			zap.String("action", "server"),
-		),
+		Log:    logger,
 	}
 
 	// Register application routes
@@ -101,6 +114,7 @@ func (s *RestServer) handle(method, path string, handler HandlerFunc, mws []func
 			Context:  r.Context(),
 			Request:  r,
 			Response: w,
+			logger:   s.Log,
 		}
 
 		if err := handler(ctx); err != nil {
