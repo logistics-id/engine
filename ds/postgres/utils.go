@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
@@ -14,4 +15,28 @@ func FilterSearch(q *bun.SelectQuery, search string, fields ...string) {
 		}
 		return q
 	})
+}
+
+func RequestSort(sort []string) string {
+	var result []string
+
+	for _, s := range sort {
+		order := "ASC"
+		if strings.HasPrefix(s, "-") {
+			order = "DESC"
+			s = s[1:]
+		}
+
+		s = strings.ReplaceAll(s, ":", ".")
+		parts := strings.Split(s, "__")
+
+		field := parts[0]
+		for _, p := range parts[1:] {
+			field += fmt.Sprintf("->>'%s'", p)
+		}
+
+		result = append(result, fmt.Sprintf("%s %s", field, order))
+	}
+
+	return strings.Join(result, ", ")
 }

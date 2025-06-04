@@ -1,29 +1,7 @@
 package rest
 
-// Message defines the allowed standard message values
-type Message string
-
-const (
-	MsgSuccess Message = "success"
-	MsgCreated Message = "resource created"
-	MsgUpdated Message = "resource updated"
-	MsgDeleted Message = "resource deleted"
-
-	MsgInvalidJSON     Message = "invalid request body"
-	MsgMissingField    Message = "missing required fields"
-	MsgInvalidField    Message = "invalid field value"
-	MsgValidationError Message = "validation failed"
-
-	MsgUnauthorized       Message = "unauthorized"
-	MsgForbidden          Message = "forbidden"
-	MsgNotFound           Message = "resource not found"
-	MsgConflict           Message = "conflict"
-	MsgInternalError      Message = "internal server error"
-	MsgServiceUnavailable Message = "service unavailable"
-)
-
 // Response defines the standard structure for all HTTP responses
-type Response struct {
+type ResponseBody struct {
 	Success bool   `json:"success"`
 	Message string `json:"message,omitempty"`
 	Data    any    `json:"data,omitempty"`
@@ -53,4 +31,14 @@ func BuildMeta(page, pageSize, total int) *Meta {
 		HasNext:    hasNext,
 		HasPrev:    hasPrev,
 	}
+}
+
+func NewResponseBody(metas ...*Meta) *ResponseBody {
+	rb := &ResponseBody{}
+
+	if len(metas) > 0 {
+		rb.Meta = metas[0]
+	}
+
+	return rb
 }

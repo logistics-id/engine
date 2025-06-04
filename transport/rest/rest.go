@@ -24,6 +24,8 @@ type RestServer struct {
 	srv    *http.Server
 }
 
+type HandlerFunc func(*Context) error
+
 // NewServer creates and configures the REST server
 func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *RestServer {
 	logger = logger.With(
@@ -86,15 +88,13 @@ func (s *RestServer) Start(ctx context.Context) {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Start the server
+	// Start the server asynchronously
 	s.Log.Info("REST/SERVER STARTED", zap.String("addr", s.Config.Server))
-	if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		s.Log.Error("REST/SERVER", zap.Error(err))
-	}
-
-	// Shutdown listener
-	<-ctx.Done()
-	s.Shutdown(ctx)
+	go func() {
+		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			s.Log.Error("REST/SERVER", zap.Error(err))
+		}
+	}()
 }
 
 // Shutdown explicitly shuts down the server

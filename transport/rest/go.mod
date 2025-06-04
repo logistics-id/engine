@@ -1,4 +1,4 @@
-module github.com/logistics-id/engine/protocol/rest
+module github.com/logistics-id/engine/transport/rest
 
 go 1.24.3
 
@@ -9,4 +9,7 @@ require (
 	go.uber.org/zap v1.27.0
 )
 
-require go.uber.org/multierr v1.10.0 // indirect
+require (
+	github.com/jinzhu/copier v0.4.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+)

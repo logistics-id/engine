@@ -4,12 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
+	"reflect"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/mux"
-	"github.com/logistics-id/engine/validate"
 	"go.uber.org/zap"
+
+	"github.com/logistics-id/engine/validate"
 )
 
 type Context struct {
@@ -26,14 +32,23 @@ type Context struct {
 // Bind decodes the JSON request body into the given struct
 func (c *Context) Bind(v any) error {
 	if c.Request.Body == nil {
-		return BadRequest("Invalid request body. Please check your input format.")
+		return BadRequest()
+	}
+
+	if c.Request.Method == http.MethodGet || c.Request.Method == http.MethodDelete {
+		// Bind from URL query params
+		if err := c.bindQueryParams(v); err != nil {
+			return BadRequest()
+		}
+
+		return nil
 	}
 
 	decoder := json.NewDecoder(c.Request.Body)
-	decoder.DisallowUnknownFields()
+	// decoder.DisallowUnknownFields()
 	if err := decoder.Decode(v); err != nil {
 		c.logger.Warn("Bind error", zap.Error(err))
-		return BadRequest("Invalid request body. Please check your input format.")
+		return BadRequest()
 	}
 
 	if err := c.Validate(v); !err.Valid {
@@ -53,43 +68,6 @@ func (c *Context) Validate(obj any) (resp *validate.Response) {
 	}
 
 	return
-}
-
-func (c *Context) Respond(data any, err error, meta *Meta) error {
-	if err == nil {
-		// Success response
-		return c.JSON(http.StatusOK, Response{
-			Success: true,
-			Message: string(MsgSuccess),
-			Data:    data,
-			Meta:    meta,
-		})
-	}
-
-	// If it's a structured HTTPError, use its code and message
-	var httpErr HTTPError
-	if errors.As(err, &httpErr) {
-		return c.JSON(httpErr.Code, Response{
-			Success: false,
-			Message: httpErr.Message,
-			Errors:  nil,
-		})
-	}
-
-	if ev, ok := err.(*validate.Response); ok {
-		return c.JSON(422, Response{
-			Success: false,
-			Message: string(MsgValidationError),
-			Errors:  ev.GetMessages(),
-		})
-	}
-
-	// Otherwise, it's an internal error
-	return c.JSON(http.StatusInternalServerError, Response{
-		Success: false,
-		Message: string(MsgInternalError),
-		Errors:  err.Error(),
-	})
 }
 
 // lazyinit initialing validator instances for one of time only.
@@ -113,27 +91,9 @@ func (c *Context) Text(code int, msg string) {
 	c.Response.Write([]byte(msg))
 }
 
-// Success returns a standard 200 OK JSON response
-func (c *Context) Success(data any, message Message) error {
-	return c.JSON(http.StatusOK, Response{
-		Success: true,
-		Message: string(message),
-		Data:    data,
-	})
-}
-
-// Created returns a standard 201 Created JSON response
-func (c *Context) Created(data any, message Message) error {
-	return c.JSON(http.StatusCreated, Response{
-		Success: true,
-		Message: string(message),
-		Data:    data,
-	})
-}
-
 // Error returns a structured error response with the given status code
 func (c *Context) Error(code int, message Message, errs any) error {
-	return c.JSON(code, Response{
+	return c.JSON(code, ResponseBody{
 		Success: false,
 		Message: string(message),
 		Errors:  errs,
@@ -157,32 +117,116 @@ func (c *Context) Param(key string) string {
 	return vars[key]
 }
 
-// HandlerFunc defines the function signature for route handlers
-type HandlerFunc func(*Context) error
+func (c *Context) Respond(body any, err error) error {
+	switch {
+	case err == nil:
+		if rb, ok := body.(*ResponseBody); ok {
+			if rb.Message == "" {
+				rb.Message = string(MsgSuccess)
+			}
+			rb.Success = true
+			return c.JSON(http.StatusOK, rb)
+		}
 
-// HTTPError is a reusable error type for structured error responses
-type HTTPError struct {
-	Code    int
-	Message string
+		return c.JSON(http.StatusOK, ResponseBody{
+			Success: true,
+			Message: string(MsgSuccess),
+			Data:    body,
+		})
+
+	case errors.As(err, new(*validate.Response)):
+		ve := err.(*validate.Response)
+		return c.JSON(http.StatusUnprocessableEntity, ResponseBody{
+			Success: false,
+			Message: string(MsgValidationError),
+			Errors:  ve.GetMessages(),
+		})
+
+	case errors.As(err, new(HTTPError)):
+		he := err.(HTTPError)
+		return c.JSON(he.Code, ResponseBody{
+			Success: false,
+			Message: he.Error(),
+		})
+
+	default:
+		return c.JSON(http.StatusInternalServerError, ResponseBody{
+			Success: false,
+			Message: string(MsgInternalError),
+			Errors:  err.Error(),
+		})
+	}
 }
 
-func (e HTTPError) Error() string {
-	return e.Message
+func (c *Context) bindQueryParams(v any) error {
+	return bindStructFields(v, c.Request.URL.Query())
 }
 
-// Common HTTP error helpers
-func BadRequest(msg string) HTTPError {
-	return HTTPError{Code: http.StatusBadRequest, Message: msg}
+func setFieldValue(field reflect.Value, value string) error {
+	if !field.CanSet() {
+		return nil
+	}
+
+	switch field.Kind() {
+	case reflect.String:
+		field.SetString(value)
+	case reflect.Int, reflect.Int64:
+		i, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		field.SetInt(i)
+	case reflect.Uint, reflect.Uint64:
+		u, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		field.SetUint(u)
+	case reflect.Float64:
+		f, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return err
+		}
+		field.SetFloat(f)
+	case reflect.Bool:
+		b, err := strconv.ParseBool(value)
+		if err != nil {
+			return err
+		}
+		field.SetBool(b)
+	}
+	return nil
 }
 
-func Unauthorized(msg string) HTTPError {
-	return HTTPError{Code: http.StatusUnauthorized, Message: msg}
-}
+func bindStructFields(v any, values url.Values) error {
+	val := reflect.ValueOf(v).Elem()
+	typ := val.Type()
 
-func Forbidden(msg string) HTTPError {
-	return HTTPError{Code: http.StatusForbidden, Message: msg}
-}
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldType := typ.Field(i)
 
-func InternalServer(msg string) HTTPError {
-	return HTTPError{Code: http.StatusInternalServerError, Message: msg}
+		if fieldType.Anonymous && field.Kind() == reflect.Struct {
+			ptr := field.Addr().Interface()
+			if err := bindStructFields(ptr, values); err != nil {
+				return err
+			}
+			continue
+		}
+
+		tag := fieldType.Tag.Get("query")
+		if tag == "" {
+			tag = strings.ToLower(fieldType.Name)
+		}
+
+		paramVal := values.Get(tag) // ← this works because it's url.Values
+		if paramVal == "" {
+			continue
+		}
+
+		if err := setFieldValue(field, paramVal); err != nil {
+			return fmt.Errorf("failed to bind field '%s': %w", tag, err)
+		}
+	}
+	return nil
 }

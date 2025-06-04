@@ -43,6 +43,10 @@ func NewClient(cfg *Config, l *zap.Logger) (*Client, error) {
 	// Add custom zap logger for query hooks
 	db.AddQueryHook(&ZapQueryHook{Logger: l})
 
+	// db.AddQueryHook(bundebug.NewQueryHook(
+	// 	bundebug.WithVerbose(true),
+	// ))
+
 	l.Info("PG/CONN CONNECTED", zap.String("action", "connection"))
 
 	return &Client{

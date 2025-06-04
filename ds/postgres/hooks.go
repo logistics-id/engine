@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -19,16 +20,22 @@ func (h *ZapQueryHook) BeforeQuery(ctx context.Context, event *bun.QueryEvent) c
 
 func (h *ZapQueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 	requestID := "-"
-	if rid := ctx.Value("X-Request-ID"); rid != nil {
+	if rid := ctx.Value("request_id"); rid != nil {
 		if str, ok := rid.(string); ok {
 			requestID = str
 		}
 	}
 
-	h.Logger.Info("PG/QUERY",
-		zap.String("query", event.Query),
-		zap.Duration("duration", time.Since(event.StartTime)),
+	log := h.Logger.With(
+		zap.String("event", event.Operation()),
+		zap.String("query", strings.ReplaceAll(event.Query, "\"", "")),
 		zap.String("request_id", requestID),
-		zap.Error(event.Err),
+		zap.Duration("duration", time.Since(event.StartTime)),
 	)
+
+	if event.Err != nil {
+		log.Error("PG/QUERY ", zap.Error(event.Err))
+	} else {
+		log.Info("PG/QUERY")
+	}
 }

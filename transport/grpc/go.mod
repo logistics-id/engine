@@ -1,4 +1,4 @@
-module github.com/logistics-id/engine/protocol/grpc
+module github.com/logistics-id/engine/transport/grpc
 
 go 1.24.3
 

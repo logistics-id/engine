@@ -1,16 +1,17 @@
 # logistics-id/engine
 
-A lightweight, modular lifecycle and dependency manager for Go microservices.
+**Engine** is a powerful, production-ready framework for rapidly developing Go microservices at [logistics-id](https://github.com/logistics-id).
 
-This package is designed for [logistics-id](https://github.com/logistics-id) projects.
-It speed up the development of microservices with Built-in support for databases, caches, brokers, and transport layers—so you can focus on building features, not boilerplate.
+Engine accelerates microservice delivery by providing robust, integrated libraries for essential infrastructure, including databases (MongoDB, PostgreSQL, Redis), message brokers (RabbitMQ), and transport protocols (REST, gRPC). Its built-in lifecycle management, structured logging, and unified architecture eliminate boilerplate and complexity.
+
+With Engine, development can confidently build, deploy, and scale microservices faster—focusing purely on delivering impactful business logic, not managing infrastructure.
 
 ## ✨ Features
 
 - **Lifecycle hooks:** Register `OnStart` and `OnStop` functions for any dependency.
 - **Signal handling:** Handles `SIGINT`/`SIGTERM` for graceful shutdown.
 - **Centralized config and structured logging:** Built-in logger with [zap](https://github.com/uber-go/zap).
-- **Modular connectors:** Built-in for MongoDB, PostgreSQL, Redis, RabbitMQ, REST, gRPC, and more.
+- **Modular libraries:** Built-in for MongoDB, PostgreSQL, Redis, RabbitMQ, REST, gRPC, and more.
 
 ---
 

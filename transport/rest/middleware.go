@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -43,13 +44,21 @@ func LoggingMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 			start := time.Now()
 			reqID := r.Context().Value("request_id")
 
-			next.ServeHTTP(w, r)
+			rec := &responseRecorder{
+				ResponseWriter: w,
+				statusCode:     http.StatusOK,
+				body:           &bytes.Buffer{},
+			}
+
+			next.ServeHTTP(rec, r)
 
 			logger.Info("REST/SERVER",
-				zap.String("action", "request"),
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
-				zap.String("remote", r.RemoteAddr),
+				zap.String("query", r.URL.RawQuery),
+				zap.Int("status", rec.statusCode),
+				zap.String("user_agent", r.UserAgent()),
+				zap.String("remote", getRealIP(r)),
 				zap.String("request_id", fmt.Sprint(reqID)),
 				zap.Duration("duration", time.Since(start)),
 			)
@@ -92,9 +101,15 @@ func CORSMiddleware() func(http.Handler) http.Handler {
 func JWTAuthMiddleware(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := &Context{
+				Context:  r.Context(),
+				Request:  r,
+				Response: w,
+			}
+
 			authHeader := r.Header.Get("Authorization")
 			if !strings.HasPrefix(authHeader, "Bearer ") {
-				http.Error(w, "Missing or invalid Authorization header", http.StatusUnauthorized)
+				ctx.Error(http.StatusUnauthorized, MsgUnauthorized, nil)
 				return
 			}
 
@@ -106,12 +121,12 @@ func JWTAuthMiddleware(secret string) func(http.Handler) http.Handler {
 			})
 
 			if err != nil || !token.Valid {
-				http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+				ctx.Error(http.StatusUnauthorized, MsgUnauthorized, nil)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userKey, claims)
-			next.ServeHTTP(w, r.WithContext(ctx))
+			ctxUsr := context.WithValue(r.Context(), userKey, claims)
+			next.ServeHTTP(w, r.WithContext(ctxUsr))
 		})
 	}
 }
@@ -119,11 +134,18 @@ func JWTAuthMiddleware(secret string) func(http.Handler) http.Handler {
 func RequireRole(role string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := &Context{
+				Context:  r.Context(),
+				Request:  r,
+				Response: w,
+			}
+
 			claims, ok := r.Context().Value(userKey).(*CustomClaims)
 			if !ok || claims.Role != role {
-				http.Error(w, "Forbidden: role mismatch", http.StatusForbidden)
+				ctx.Error(http.StatusForbidden, MsgForbidden, nil)
 				return
 			}
+
 			next.ServeHTTP(w, r)
 		})
 	}
