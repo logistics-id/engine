@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/logistics-id/engine/common"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -89,7 +90,7 @@ func NewZapServerLogger(log *zap.Logger) grpc.UnaryServerInterceptor {
 
 		var reqID string
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
-			vals := md.Get("x-request-id")
+			vals := md.Get(string(common.ContextRequestIDKey))
 			if len(vals) > 0 {
 				reqID = vals[0]
 			}
@@ -103,7 +104,7 @@ func NewZapServerLogger(log *zap.Logger) grpc.UnaryServerInterceptor {
 		start := time.Now()
 
 		// ctx = context.WithC
-		ctx = context.WithValue(ctx, "request_id", reqID)
+		ctx = context.WithValue(ctx, common.ContextRequestIDKey, reqID)
 
 		resp, err = handler(ctx, req)
 

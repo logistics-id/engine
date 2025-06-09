@@ -35,7 +35,7 @@ func (c *Context) Bind(v any) error {
 		return BadRequest()
 	}
 
-	if c.Request.Method == http.MethodGet || c.Request.Method == http.MethodDelete {
+	if c.Request.Method == http.MethodGet {
 		// Bind from URL query params
 		if err := c.bindQueryParams(v); err != nil {
 			return BadRequest()

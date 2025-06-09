@@ -11,13 +11,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/logistics-id/engine/common"
 	"go.uber.org/zap"
-)
-
-type ctxKey string
-
-const (
-	userKey ctxKey = "user"
 )
 
 type CustomClaims struct {
@@ -30,9 +25,9 @@ func RequestIDMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqID := uuid.New().String()
-			ctx := context.WithValue(r.Context(), "request_id", reqID)
+			ctx := context.WithValue(r.Context(), common.ContextRequestIDKey, reqID)
 			r = r.WithContext(ctx)
-			w.Header().Set("X-Request-ID", reqID)
+			w.Header().Set(string(common.ContextRequestIDKey), reqID)
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -42,7 +37,7 @@ func LoggingMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			reqID := r.Context().Value("request_id")
+			reqID := r.Context().Value(common.ContextRequestIDKey)
 
 			rec := &responseRecorder{
 				ResponseWriter: w,
@@ -71,11 +66,18 @@ func RecoveryMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if err := recover(); err != nil {
+					ctx := &Context{
+						Context:  r.Context(),
+						Request:  r,
+						Response: w,
+					}
+
 					logger.Error("panic recovered",
 						zap.Any("error", err),
 						zap.ByteString("stack", debug.Stack()),
 					)
-					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+
+					ctx.Error(http.StatusInternalServerError, MsgInternalError, err)
 				}
 			}()
 			next.ServeHTTP(w, r)
@@ -125,7 +127,7 @@ func JWTAuthMiddleware(secret string) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctxUsr := context.WithValue(r.Context(), userKey, claims)
+			ctxUsr := context.WithValue(r.Context(), common.ContextUserKey, claims)
 			next.ServeHTTP(w, r.WithContext(ctxUsr))
 		})
 	}
@@ -140,7 +142,7 @@ func RequireRole(role string) func(http.Handler) http.Handler {
 				Response: w,
 			}
 
-			claims, ok := r.Context().Value(userKey).(*CustomClaims)
+			claims, ok := r.Context().Value(common.ContextUserKey).(*CustomClaims)
 			if !ok || claims.Role != role {
 				ctx.Error(http.StatusForbidden, MsgForbidden, nil)
 				return
@@ -152,7 +154,7 @@ func RequireRole(role string) func(http.Handler) http.Handler {
 }
 
 func FromContext(r *http.Request) *CustomClaims {
-	claims, _ := r.Context().Value(userKey).(*CustomClaims)
+	claims, _ := r.Context().Value(common.ContextUserKey).(*CustomClaims)
 	return claims
 }
 

@@ -3,8 +3,9 @@ package mongo
 import (
 	"errors"
 	"strings"
-	"time"
+	"sync"
 
+	"github.com/logistics-id/engine/common"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/event"
@@ -76,12 +77,6 @@ func RequestSort(sort []string) primitive.D {
 	return result
 }
 
-func NewCtx(timeout time.Duration) context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
-
-	return ctx
-}
-
 // StructFilter returns a BSON map of specific fields from a struct.
 // If no fields are specified, it returns all fields.
 func StructFilter(m any, fields ...string) primitive.M {
@@ -114,41 +109,42 @@ func commandMap(c bson.Raw) map[string]any {
 	return res
 }
 
+var commandCache sync.Map
+
 func monitoring() *event.CommandMonitor {
 	return &event.CommandMonitor{
 		Started: func(ctx context.Context, evt *event.CommandStartedEvent) {
 			if evt.CommandName != "ping" && evt.CommandName != "endSessions" {
-				reqID, _ := ctx.Value("X-Request-ID").(string)
-
-				logger.Info("MGO/CMD EXEC",
-					zap.String("request_id", reqID),
-					zap.String("event", evt.CommandName),
-					zap.String("database", evt.DatabaseName),
-					zap.Any("command", commandMap(evt.Command)),
-				)
+				commandCache.Store(evt.RequestID, evt.Command)
 			}
 		},
 		Succeeded: func(ctx context.Context, evt *event.CommandSucceededEvent) {
-			if evt.CommandName != "ping" {
-				reqID, _ := ctx.Value("X-Request-ID").(string)
-
-				logger.Info("MGO/CMD SUCCEEDED",
-					zap.String("request_id", reqID),
-					zap.String("event", evt.CommandName),
-					zap.Duration("duration", evt.Duration),
-				)
+			if evt.CommandName != "ping" && evt.CommandName != "endSessions" {
+				reqID, _ := ctx.Value(common.ContextRequestIDKey).(string)
+				if cmd, ok := commandCache.Load(evt.RequestID); ok {
+					logger.Info("MGO/CMD SUCCEEDED",
+						zap.String("request_id", reqID),
+						zap.String("event", evt.CommandName),
+						zap.Duration("duration", evt.Duration),
+						zap.Any("command", commandMap(cmd.(bson.Raw))),
+					)
+					commandCache.Delete(evt.RequestID)
+				}
 			}
 		},
 		Failed: func(ctx context.Context, evt *event.CommandFailedEvent) {
-			if evt.CommandName != "ping" {
-				reqID, _ := ctx.Value("X-Request-ID").(string)
-
-				logger.Error("MGO/CMD FAILED",
-					zap.String("request_id", reqID),
-					zap.String("command", evt.CommandName),
-					zap.Duration("duration", evt.Duration),
-					zap.Error(errors.New(evt.Failure)),
-				)
+			if evt.CommandName != "ping" && evt.CommandName != "endSessions" {
+				reqID, _ := ctx.Value(common.ContextRequestIDKey).(string)
+				if cmd, ok := commandCache.Load(evt.RequestID); ok {
+					logger.Error("MGO/CMD FAILED",
+						zap.String("request_id", reqID),
+						zap.String("event", evt.CommandName),
+						zap.Duration("duration", evt.Duration),
+						zap.Any("command", commandMap(cmd.(bson.Raw))),
+						zap.Error(errors.New(evt.Failure)),
+					)
+					commandCache.Delete(evt.RequestID)
+				}
 			}
 		},
 	}

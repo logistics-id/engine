@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/logistics-id/engine/common"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
@@ -80,7 +81,6 @@ func (c *Client) connect() error {
 	)
 
 	conn, err := amqp.Dial(c.config.Datasource)
-
 	if err != nil {
 		logger.Error("RMQ/CONN FAILED", zap.Error(err))
 		return err
@@ -180,7 +180,7 @@ func (c *Client) Publish(ctx context.Context, topic string, data any) error {
 
 	// Auto reconnect if connection/channel closed
 	if c.conn == nil || c.conn.IsClosed() || c.channel == nil || c.channel.IsClosed() {
-		logger.Debug("RMQ/PUB connection or channel closed, reconnecting")
+		logger.Warn("RMQ/PUB connection or channel closed, reconnecting")
 		c.reconnect()
 	}
 
@@ -189,10 +189,10 @@ func (c *Client) Publish(ctx context.Context, topic string, data any) error {
 		return fmt.Errorf("RMQ/PUB: marshal error %w", err)
 	}
 
-	requestID, _ := ctx.Value("request_id").(string)
+	requestID, _ := ctx.Value(common.ContextRequestIDKey).(string)
 	headers := amqp.Table{}
 	if requestID != "" {
-		headers["X-Request-ID"] = requestID
+		headers[string(common.ContextRequestIDKey)] = requestID
 	}
 
 	err = c.channel.PublishWithContext(ctx,
@@ -310,13 +310,13 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 		closeChan := make(chan *amqp.Error)
 		ch.NotifyClose(closeChan)
 
-		logger.Debug("RMQ/SUBS STARTED")
+		logger.Info("RMQ/SUBS STARTED")
 
 		// Message processing loop
 		processDone := make(chan error, 1)
 		go func() {
 			for d := range msgs {
-				requestID := d.Headers["X-Request-ID"]
+				requestID := d.Headers[string(common.ContextRequestIDKey)]
 
 				raw := json.RawMessage(string(d.Body))
 				start := time.Now()

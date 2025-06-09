@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/logistics-id/engine/common"
 	"go.uber.org/zap"
 )
 
@@ -15,7 +16,6 @@ var cache *Redis
 // NewConnection initializes Redis connection pool and global defaultCache instance.
 // Also assigns the global Logger for package-wide logging.
 func NewConnection(cfg *Config, l *zap.Logger) error {
-
 	pool := &redis.Pool{
 		MaxIdle:   80,
 		MaxActive: 12000,
@@ -128,7 +128,7 @@ func ErrNotInitialized() error {
 }
 
 func getReqID(ctx context.Context) zap.Field {
-	if reqID, ok := ctx.Value("request_id").(string); ok && reqID != "" {
+	if reqID, ok := ctx.Value(common.ContextRequestIDKey).(string); ok && reqID != "" {
 		return zap.String("request_id", reqID)
 	}
 

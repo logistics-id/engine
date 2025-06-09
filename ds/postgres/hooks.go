@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/logistics-id/engine/common"
 	"github.com/uptrace/bun"
 	"go.uber.org/zap"
 )
@@ -20,7 +21,7 @@ func (h *ZapQueryHook) BeforeQuery(ctx context.Context, event *bun.QueryEvent) c
 
 func (h *ZapQueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 	requestID := "-"
-	if rid := ctx.Value("request_id"); rid != nil {
+	if rid := ctx.Value(common.ContextRequestIDKey); rid != nil {
 		if str, ok := rid.(string); ok {
 			requestID = str
 		}

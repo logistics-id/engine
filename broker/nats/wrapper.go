@@ -3,9 +3,16 @@ package nats
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
 	"go.uber.org/zap"
+)
+
+// internal shared client singleton
+var (
+	defaultClient           *Client
+	ErrClientNotInitialized = errors.New("nats client not initialized; call InitializeDefaultClient first")
 )
 
 // Config contains the NATS connection parameters.
@@ -13,18 +20,17 @@ type Config struct {
 	Server     string
 	Username   string
 	Password   string
-	Datasource string
 	Prefix     string
+	datasource string
 }
 
-// internal shared client singleton
-var (
-	defaultClient           *Client
-	defaultLogger           *zap.Logger
-	ErrClientNotInitialized = errors.New("nats client not initialized; call InitializeDefaultClient first")
-)
+func (c *Config) compile() *Config {
+	c.datasource = fmt.Sprintf("nats://%s:%s@%s", c.Username, c.Password, c.Server)
 
-// InitializeDefaultClient creates the default singleton NATS client for package-level functions.
+	return c
+}
+
+// NewConnection creates the default singleton NATS client for package-level functions.
 // Must be called before using Publish/Subscribe functions.
 // example
 // nats.NewConnection(cfg, logger)
@@ -35,7 +41,7 @@ var (
 //		    }
 //		}()
 func NewConnection(cfg *Config, logger *zap.Logger) error {
-	c, err := NewClient(cfg, logger)
+	c, err := NewClient(cfg.compile(), logger)
 	if err == nil {
 		defaultClient = c
 	}

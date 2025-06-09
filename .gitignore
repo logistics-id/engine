@@ -1,0 +1,55 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Output of `go build`
+/bin/
+/out/
+/dist/
+
+# Build artifact directories (often used in Makefile or CI)
+/build/
+/coverage/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories (vendor dependencies, if used)
+vendor/
+
+# Go module cache (should never be checked in)
+/pkg/
+*.mod
+*.sum
+
+# IDE/editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Coverage and test output
+*.cover
+*.coverprofile
+*.test
+*.prof
+
+# Generated files (by tools like stringer, mockgen, etc.)
+*.gen.go
+
+# Temporary files and backups
+*~
+*.tmp
+*.bak

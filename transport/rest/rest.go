@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"reflect"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -75,6 +78,10 @@ func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *Res
 	// Register application routes
 	register(srv)
 
+	if cfg.IsDev {
+		debugRoutes(r)
+	}
+
 	return srv
 }
 
@@ -108,7 +115,7 @@ func (s *RestServer) Shutdown(ctx context.Context) {
 }
 
 // Generic route handler with middleware support
-func (s *RestServer) handle(method, path string, handler HandlerFunc, mws []func(http.Handler) http.Handler) {
+func (s *RestServer) handle(method, path string, handler HandlerFunc, mws []func(http.Handler) http.Handler, name ...string) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := &Context{
 			Context:  r.Context(),
@@ -130,30 +137,39 @@ func (s *RestServer) handle(method, path string, handler HandlerFunc, mws []func
 	var wrapped http.Handler = h
 	wrapped = chainMiddleware(wrapped, mws)
 
-	s.Router.Handle(path, wrapped).Methods(method)
+	route := s.Router.Handle(path, wrapped).Methods(method)
+	if len(name) > 0 {
+		route.Name(name[0])
+	}
 }
 
 // Shorthand route registration
 func (s *RestServer) GET(path string, handler HandlerFunc, mws []func(http.Handler) http.Handler) {
-	s.handle(http.MethodGet, path, handler, mws)
+	s.handle(http.MethodGet, path, handler, mws, handlerName(handler))
 }
+
 func (s *RestServer) POST(path string, handler HandlerFunc, mws []func(http.Handler) http.Handler) {
-	s.handle(http.MethodPost, path, handler, mws)
+	s.handle(http.MethodPost, path, handler, mws, handlerName(handler))
 }
+
 func (s *RestServer) PUT(path string, handler HandlerFunc, mws []func(http.Handler) http.Handler) {
-	s.handle(http.MethodPut, path, handler, mws)
+	s.handle(http.MethodPut, path, handler, mws, handlerName(handler))
 }
+
 func (s *RestServer) DELETE(path string, handler HandlerFunc, mws []func(http.Handler) http.Handler) {
-	s.handle(http.MethodDelete, path, handler, mws)
+	s.handle(http.MethodDelete, path, handler, mws, handlerName(handler))
 }
+
 func (s *RestServer) PATCH(path string, handler HandlerFunc, mws []func(http.Handler) http.Handler) {
-	s.handle(http.MethodPatch, path, handler, mws)
+	s.handle(http.MethodPatch, path, handler, mws, handlerName(handler))
 }
+
 func (s *RestServer) OPTIONS(path string, handler HandlerFunc, mws []func(http.Handler) http.Handler) {
-	s.handle(http.MethodOptions, path, handler, mws)
+	s.handle(http.MethodOptions, path, handler, mws, handlerName(handler))
 }
+
 func (s *RestServer) HEAD(path string, handler HandlerFunc, mws []func(http.Handler) http.Handler) {
-	s.handle(http.MethodHead, path, handler, mws)
+	s.handle(http.MethodHead, path, handler, mws, handlerName(handler))
 }
 
 // WithAuth applies JWT and optional role middleware
@@ -174,4 +190,12 @@ func registerDefaultRoutes(r *mux.Router) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}).Methods(http.MethodGet)
+}
+
+// cleanHandlerName returns a simplified function name with package and method.
+func handlerName(fn any) string {
+	ptr := reflect.ValueOf(fn).Pointer()
+	full := runtime.FuncForPC(ptr).Name()
+	parts := strings.Split(full, "/")
+	return parts[len(parts)-1]
 }

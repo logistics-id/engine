@@ -1,6 +1,7 @@
 package mongo
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -48,7 +49,8 @@ func NewConnection(c *Config, l *zap.Logger) error {
 		ApplyURI(c.Datasource).
 		SetMonitor(monitoring())
 
-	ctx := NewCtx(c.CtxTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.CtxTimeout)
+	defer cancel()
 
 	client, err := mongo.Connect(ctx, clientOpts)
 
@@ -57,8 +59,7 @@ func NewConnection(c *Config, l *zap.Logger) error {
 		return err
 	}
 
-	err = client.Ping(ctx, nil)
-	if err != nil {
+	if err = client.Ping(ctx, nil); err != nil {
 		logger.Error("MGO/CONN FAILURE", zap.Error(err))
 		return err
 	}

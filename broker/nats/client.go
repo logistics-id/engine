@@ -19,19 +19,14 @@ type Client struct {
 
 // NewClient initializes a NATS client with the given config and logger.
 func NewClient(cfg *Config, logger *zap.Logger) (*Client, error) {
-	dsn := cfg.Datasource
-	if dsn == "" {
-		dsn = fmt.Sprintf("nats://%s:%s@%s", cfg.Username, cfg.Password, cfg.Server)
-	}
-
-	nc, err := nats.Connect(dsn)
+	nc, err := nats.Connect(cfg.datasource)
 	if err != nil {
-		logger.Fatal("NATS/CONN FAILED", zap.String("dsn", dsn), zap.Any("config", cfg), zap.Error(err))
+		logger.Fatal("NATS/CONN FAILED", zap.String("dsn", cfg.datasource), zap.Any("config", cfg), zap.Error(err))
 
 		return nil, err
 	}
 
-	logger.Info("NATS/CONN CONNECTED", zap.String("dsn", dsn))
+	logger.Info("NATS/CONN CONNECTED", zap.String("dsn", cfg.datasource))
 
 	return &Client{
 		conn:   nc,
@@ -97,7 +92,6 @@ func (c *Client) Subscribe(subject string, handler func(context.Context, any)) e
 
 		// c.conn.
 	})
-
 	if err != nil {
 		c.logger.Error("Failed to subscribe to subject",
 			zap.String("subject", fullSubject),

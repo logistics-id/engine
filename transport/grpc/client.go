@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/logistics-id/engine/common"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -33,14 +34,14 @@ func NewClient(ctx context.Context, serviceName string) (*Client, error) {
 	log := Service.logger.With(
 		zap.String("action", "client"),
 		zap.String("service_name", serviceName),
-		zap.String("request_id", ctx.Value("request_id").(string)),
+		zap.String("request_id", ctx.Value(common.ContextRequestIDKey).(string)),
 	)
 
 	reg := Service.registry
-	dialTimeout := Service.config.DialTimeout
-	if dialTimeout == 0 {
-		dialTimeout = 5 * time.Second // default
-	}
+	// dialTimeout := Service.config.DialTimeout
+	// if dialTimeout == 0 {
+	// 	dialTimeout = 5 * time.Second // default
+	// }
 
 	target, err := reg.PickOne(ctx, serviceName)
 	if err != nil {
@@ -53,7 +54,6 @@ func NewClient(ctx context.Context, serviceName string) (*Client, error) {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(NewZapClientLogger(log)),
 	)
-
 	if err != nil {
 		log.Error("DIAL FAILED", zap.String("service_host", target), zap.Error(err))
 		return nil, err
@@ -108,15 +108,14 @@ func NewZapClientLogger(log *zap.Logger) grpc.UnaryClientInterceptor {
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption,
 	) error {
-
-		reqID := ctx.Value("request_id").(string)
+		reqID := ctx.Value(common.ContextRequestIDKey).(string)
 
 		var reqPayload []byte
 		if pb, ok := req.(proto.Message); ok {
 			reqPayload, _ = json.Marshal(pb)
 		}
 
-		md := metadata.Pairs("x-request-id", reqID)
+		md := metadata.Pairs(string(common.ContextRequestIDKey), reqID)
 		ctx = metadata.NewOutgoingContext(ctx, md)
 
 		start := time.Now()

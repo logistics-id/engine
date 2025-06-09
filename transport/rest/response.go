@@ -10,15 +10,15 @@ type ResponseBody struct {
 }
 
 type Meta struct {
-	Page       int  `json:"page"`
-	PageSize   int  `json:"page_size"`
-	Total      int  `json:"total"`
-	TotalPages int  `json:"total_pages"`
-	HasNext    bool `json:"has_next"`
-	HasPrev    bool `json:"has_prev"`
+	Page       int64 `json:"page"`
+	PageSize   int64 `json:"page_size"`
+	Total      int64 `json:"total"`
+	TotalPages int64 `json:"total_pages"`
+	HasNext    bool  `json:"has_next"`
+	HasPrev    bool  `json:"has_prev"`
 }
 
-func BuildMeta(page, pageSize, total int) *Meta {
+func BuildMeta(page, pageSize, total int64) *Meta {
 	totalPages := (total + pageSize - 1) / pageSize // ceil division
 	hasNext := page < totalPages
 	hasPrev := page > 1
@@ -33,8 +33,10 @@ func BuildMeta(page, pageSize, total int) *Meta {
 	}
 }
 
-func NewResponseBody(metas ...*Meta) *ResponseBody {
-	rb := &ResponseBody{}
+func NewResponseBody(data any, metas ...*Meta) *ResponseBody {
+	rb := &ResponseBody{
+		Data: data,
+	}
 
 	if len(metas) > 0 {
 		rb.Meta = metas[0]
