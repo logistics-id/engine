@@ -3,6 +3,7 @@ module github.com/logistics-id/engine/ds/postgres
 go 1.24.3
 
 require (
+	github.com/logistics-id/engine/common v0.0.0-20250609162415-d8546baa6d4b
 	github.com/uptrace/bun v1.2.11
 	github.com/uptrace/bun/dialect/pgdialect v1.2.11
 	github.com/uptrace/bun/driver/pgdriver v1.2.11
