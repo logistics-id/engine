@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/enigma-id/engine/validate"
+	"github.com/logistics-id/engine/validate"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,7 +12,7 @@ func TestIsNotEmpty(t *testing.T) {
 	t.Parallel()
 
 	tt := time.Time{}
-	var tests = []struct {
+	tests := []struct {
 		param    interface{}
 		expected bool
 	}{
@@ -44,7 +44,7 @@ func TestIsNotEmpty(t *testing.T) {
 func TestIsNumeric(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param    interface{}
 		expected bool
 	}{
@@ -65,9 +65,9 @@ func TestIsNumeric(t *testing.T) {
 		{"달기&Co.", false},
 		{"〩Hours", false},
 		{"\ufff0", false},
-		{"\u0070", false}, //UTF-8(ASCII): p
-		{"\u0026", false}, //UTF-8(ASCII): &
-		{"\u0030", true},  //UTF-8(ASCII): 0
+		{"\u0070", false}, // UTF-8(ASCII): p
+		{"\u0026", false}, // UTF-8(ASCII): &
+		{"\u0030", true},  // UTF-8(ASCII): 0
 		{"123", true},
 		{"0123", true},
 		{"-00123", true},
@@ -108,7 +108,7 @@ func TestIsNumeric(t *testing.T) {
 func TestIsAlpha(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param    string
 		expected bool
 	}{
@@ -129,9 +129,9 @@ func TestIsAlpha(t *testing.T) {
 		{"달기&Co.", false},
 		{"〩Hours", false},
 		{"\ufff0", false},
-		{"\u0070", true},  //UTF-8(ASCII): p
-		{"\u0026", false}, //UTF-8(ASCII): &
-		{"\u0030", false}, //UTF-8(ASCII): 0
+		{"\u0070", true},  // UTF-8(ASCII): p
+		{"\u0026", false}, // UTF-8(ASCII): &
+		{"\u0030", false}, // UTF-8(ASCII): 0
 		{"123", false},
 		{"0123", false},
 		{"-00123", false},
@@ -165,7 +165,7 @@ func TestIsAlpha(t *testing.T) {
 func TestIsAlphaSpace(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param    string
 		expected bool
 	}{
@@ -222,7 +222,7 @@ func TestIsAlphaSpace(t *testing.T) {
 func TestIsAlphanumeric(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param    string
 		expected bool
 	}{
@@ -245,9 +245,9 @@ func TestIsAlphanumeric(t *testing.T) {
 		{"달기&Co.", false},
 		{"〩Hours", false},
 		{"\ufff0", false},
-		{"\u0070", true},  //UTF-8(ASCII): p
-		{"\u0026", false}, //UTF-8(ASCII): &
-		{"\u0030", true},  //UTF-8(ASCII): 0
+		{"\u0070", true},  // UTF-8(ASCII): p
+		{"\u0026", false}, // UTF-8(ASCII): &
+		{"\u0030", true},  // UTF-8(ASCII): 0
 		{"123", true},
 		{"0123", true},
 		{"-00123", false},
@@ -281,7 +281,7 @@ func TestIsAlphanumeric(t *testing.T) {
 func TestIsAlphanumericSpace(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param    string
 		expected bool
 	}{
@@ -342,7 +342,7 @@ func TestIsAlphanumericSpace(t *testing.T) {
 func TestIsEmail(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param    interface{}
 		expected bool
 	}{
@@ -372,7 +372,7 @@ func TestIsEmail(t *testing.T) {
 func TestIsURL(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param    interface{}
 		expected bool
 	}{
@@ -458,7 +458,7 @@ func TestIsURL(t *testing.T) {
 func TestIsJSON(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param    string
 		expected bool
 	}{
@@ -482,7 +482,7 @@ func TestIsLowerThenEqual(t *testing.T) {
 	t.Parallel()
 	x := int(7)
 
-	var tests = []struct {
+	tests := []struct {
 		value    interface{}
 		param    interface{}
 		expected bool
@@ -524,7 +524,7 @@ func TestIsGreaterThanEqual(t *testing.T) {
 	t.Parallel()
 	x := int(7)
 
-	var tests = []struct {
+	tests := []struct {
 		value    interface{}
 		param    interface{}
 		expected bool
@@ -567,7 +567,7 @@ func TestIsGreaterThan(t *testing.T) {
 	x := int(7)
 	y := "testing"
 	z := []int{1, 2, 3}
-	var tests = []struct {
+	tests := []struct {
 		value    interface{}
 		param    interface{}
 		expected bool
@@ -613,7 +613,7 @@ func TestIsGreaterThan(t *testing.T) {
 func TestIsLowerThan(t *testing.T) {
 	t.Parallel()
 	x := int(7)
-	var tests = []struct {
+	tests := []struct {
 		value    interface{}
 		param    interface{}
 		expected bool
@@ -658,7 +658,7 @@ func TestIsLowerThan(t *testing.T) {
 func TestIsOnRange(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		value    interface{}
 		min      interface{}
 		max      interface{}
@@ -692,7 +692,7 @@ func TestIsOnRange(t *testing.T) {
 func TestIsContains(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param1   string
 		param2   string
 		expected bool
@@ -712,7 +712,7 @@ func TestIsContains(t *testing.T) {
 func TestIsMatches(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param1   string
 		param2   string
 		expected bool
@@ -732,7 +732,7 @@ func TestIsMatches(t *testing.T) {
 func TestIsSame(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param1   interface{}
 		param2   interface{}
 		expected bool
@@ -755,7 +755,7 @@ func TestIsSame(t *testing.T) {
 func TestIsIn(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param1   interface{}
 		param2   []string
 		expected bool
@@ -775,7 +775,7 @@ func TestIsIn(t *testing.T) {
 func TestIsNotIn(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		param1   interface{}
 		param2   []string
 		expected bool

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/enigma-id/engine/validate"
+	"github.com/logistics-id/engine/validate"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +29,7 @@ func TestValidator_Field(t *testing.T) {
 	r = v.Field("5398228707871528", "cc")
 	assert.True(t, r.Valid)
 
-	var tests = []struct {
+	tests := []struct {
 		value    interface{}
 		param    string
 		expected bool
@@ -124,7 +124,7 @@ func TestValidator_Struct(t *testing.T) {
 	}
 
 	now := time.Now()
-	var tests = []struct {
+	tests := []struct {
 		param    interface{}
 		expected bool
 	}{
@@ -284,7 +284,7 @@ func TestValidateErrorMessages(t *testing.T) {
 	assert.False(t, os.Valid)
 	assert.Equal(t, 5, len(os.GetMessages()))
 
-	var tests = []struct {
+	tests := []struct {
 		actual   string
 		expected string
 	}{
