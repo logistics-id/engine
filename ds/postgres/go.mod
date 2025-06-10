@@ -23,4 +23,3 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	mellium.im/sasl v0.3.2 // indirect
 )
-

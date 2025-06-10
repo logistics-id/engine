@@ -12,4 +12,3 @@ require (
 )
 
 require go.uber.org/multierr v1.11.0 // indirect
-
