@@ -24,4 +24,3 @@ require (
 	mellium.im/sasl v0.3.2 // indirect
 )
 
-replace github.com/logistics-id/engine/common => ../../common

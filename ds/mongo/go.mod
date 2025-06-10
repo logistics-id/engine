@@ -23,4 +23,3 @@ require (
 	golang.org/x/text v0.25.0 // indirect
 )
 
-replace github.com/logistics-id/engine/common => ../../common

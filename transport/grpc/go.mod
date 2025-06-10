@@ -18,5 +18,3 @@ require (
 	golang.org/x/text v0.25.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 )
-
-replace github.com/logistics-id/engine/common => ../../common
