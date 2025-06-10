@@ -4,7 +4,10 @@ go 1.24.3
 
 require (
 	github.com/gomodule/redigo v1.9.2
+	github.com/logistics-id/engine/common v0.0.1-dev
 	go.uber.org/zap v1.27.0
 )
 
 require go.uber.org/multierr v1.11.0 // indirect
+
+replace github.com/logistics-id/engine/common => ../../common

@@ -3,6 +3,7 @@ module github.com/logistics-id/engine/transport/grpc
 go 1.24.3
 
 require (
+	github.com/logistics-id/engine/common v0.0.1-dev
 	github.com/logistics-id/engine/ds/redis v0.0.1-dev
 	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.72.2
@@ -17,3 +18,5 @@ require (
 	golang.org/x/text v0.25.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 )
+
+replace github.com/logistics-id/engine/common => ../../common

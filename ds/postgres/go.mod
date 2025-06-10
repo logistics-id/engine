@@ -3,6 +3,7 @@ module github.com/logistics-id/engine/ds/postgres
 go 1.24.3
 
 require (
+	github.com/logistics-id/engine/common v0.0.1-dev
 	github.com/uptrace/bun v1.2.11
 	github.com/uptrace/bun/dialect/pgdialect v1.2.11
 	github.com/uptrace/bun/driver/pgdriver v1.2.11
@@ -22,3 +23,5 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	mellium.im/sasl v0.3.2 // indirect
 )
+
+replace github.com/logistics-id/engine/common => ../../common
