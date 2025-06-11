@@ -4,9 +4,9 @@ go 1.24.3
 
 require (
 	github.com/logistics-id/engine/common v0.0.5-dev
-	github.com/uptrace/bun v1.2.11
-	github.com/uptrace/bun/dialect/pgdialect v1.2.11
-	github.com/uptrace/bun/driver/pgdriver v1.2.11
+	github.com/uptrace/bun v1.2.12
+	github.com/uptrace/bun/dialect/pgdialect v1.2.12
+	github.com/uptrace/bun/driver/pgdriver v1.2.12
 	go.uber.org/zap v1.27.0
 )
 
