@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/logistics-id/engine/common"
 	"github.com/uptrace/bun"
@@ -40,19 +41,19 @@ func (r *BaseRepository[T]) WithContext(ctx context.Context) common.BaseReposito
 }
 
 func (r *BaseRepository[T]) Insert(entity *T) error {
-	_, err := r.DB.NewInsert().Model(entity).Table(r.table).Exec(r.Context)
+	_, err := r.DB.NewInsert().Model(entity).Exec(r.Context)
 	return err
 }
 
 func (r *BaseRepository[T]) FindByID(id any) (*T, error) {
 	entity := new(T)
 	q := r.DB.NewSelect().
-		Model(entity).
-		Table(r.table).
-		Where("id = ?", id)
+		Model(entity)
+
+	q.Where(fmt.Sprintf("%s.id = ?", r.table), id)
 
 	if r.enableSoftDelete {
-		q.Where("is_deleted = false")
+		q.Where(fmt.Sprintf("%s.is_deleted = false", r.table))
 	}
 
 	for _, rel := range r.defaultRelations {
@@ -67,7 +68,7 @@ func (r *BaseRepository[T]) FindByID(id any) (*T, error) {
 }
 
 func (r *BaseRepository[T]) Update(entity *T, fields ...string) error {
-	query := r.DB.NewUpdate().Model(entity).WherePK().Table(r.table)
+	query := r.DB.NewUpdate().Model(entity).WherePK()
 	if len(fields) > 0 {
 		query.Column(fields...)
 	}
@@ -81,7 +82,6 @@ func (r *BaseRepository[T]) SoftDelete(id any) error {
 	}
 	_, err := r.DB.NewUpdate().
 		Model((*T)(nil)).
-		Table(r.table).
 		Set("is_deleted = true").
 		Where("id = ?", id).
 		Exec(r.Context)
@@ -91,7 +91,7 @@ func (r *BaseRepository[T]) SoftDelete(id any) error {
 func (r *BaseRepository[T]) FindAll(opts *common.QueryOption, customQuery CustomQueryFn) ([]*T, int64, error) {
 	var result []*T
 
-	q := r.DB.NewSelect().Model(&result).Table(r.table)
+	q := r.DB.NewSelect().Model(&result)
 
 	if opts.Search != "" && len(r.searchFields) > 0 {
 		FilterSearch(q, opts.Search, r.searchFields...)
@@ -104,7 +104,7 @@ func (r *BaseRepository[T]) FindAll(opts *common.QueryOption, customQuery Custom
 	}
 
 	if r.enableSoftDelete {
-		q.Where("is_deleted = false")
+		q.Where(fmt.Sprintf("%s.is_deleted = false", r.table))
 	}
 
 	for _, rel := range r.defaultRelations {
@@ -134,7 +134,7 @@ func (r *BaseRepository[T]) FindAll(opts *common.QueryOption, customQuery Custom
 func (r *BaseRepository[T]) FindOne(customQuery CustomQueryFn) (*T, error) {
 	var result T
 
-	q := r.DB.NewSelect().Model(&result).TableExpr(r.table)
+	q := r.DB.NewSelect().Model(&result)
 
 	if customQuery != nil {
 		q = customQuery(q)

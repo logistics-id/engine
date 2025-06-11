@@ -19,6 +19,10 @@ type Meta struct {
 }
 
 func BuildMeta(page, pageSize, total int64) *Meta {
+	if total == 0 {
+		return &Meta{}
+	}
+
 	totalPages := (total + pageSize - 1) / pageSize // ceil division
 	hasNext := page < totalPages
 	hasPrev := page > 1

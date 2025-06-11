@@ -65,7 +65,6 @@ func (v *Validator) fetchTag(tag string) (vt []validatorTag, e error) {
 	}
 
 	return
-
 }
 
 // Field validates a value based on the provided
@@ -253,6 +252,7 @@ var tagsFn = map[string]validatorFn{
 	"same":            validSame,
 	"in":              validIn,
 	"not_in":          validNotIn,
+	"uuid":            validUUID,
 }
 
 // New creates a new Validation instances.

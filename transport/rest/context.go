@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,8 +52,41 @@ func (c *Context) Bind(v any) error {
 		return BadRequest()
 	}
 
+	// Bind URL params if struct has any `param` tags
+	if err := c.bindPathParams(v); err != nil {
+		return BadRequest()
+	}
+
 	if err := c.Validate(v); !err.Valid {
 		return err
+	}
+
+	return nil
+}
+
+func (c *Context) bindPathParams(v any) error {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	rt := rv.Type()
+
+	for i := 0; i < rt.NumField(); i++ {
+		field := rt.Field(i)
+		paramKey := field.Tag.Get("param")
+		if paramKey == "" {
+			continue
+		}
+
+		paramValue := c.Param(paramKey)
+		if paramValue == "" {
+			continue
+		}
+
+		fv := rv.Field(i)
+		if fv.CanSet() && fv.Kind() == reflect.String {
+			fv.SetString(paramValue)
+		}
 	}
 
 	return nil
@@ -147,6 +181,13 @@ func (c *Context) Respond(body any, err error) error {
 		return c.JSON(he.Code, ResponseBody{
 			Success: false,
 			Message: he.Error(),
+		})
+
+	case errors.Is(err, sql.ErrNoRows):
+		return c.JSON(http.StatusNotFound, ResponseBody{
+			Success: false,
+			Message: string(MsgNotFound),
+			Errors:  err.Error(),
 		})
 
 	default:

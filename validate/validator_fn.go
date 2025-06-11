@@ -2,6 +2,7 @@ package validate
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -165,6 +166,16 @@ func validNotIn(value interface{}, param string) (v bool, m string) {
 	if v = IsNotIn(value, p...); !v {
 		m = "The selected %s is invalid"
 	}
+	return
+}
+
+func validUUID(value interface{}, _ string) (v bool, m string) {
+	uuidRegex := regexp.MustCompile(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$`)
+
+	if v = uuidRegex.MatchString(value.(string)); !v {
+		m = "The %s must be a valid UUID"
+	}
+
 	return
 }
 

@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"strings"
 	"time"
 
@@ -35,7 +37,11 @@ func (h *ZapQueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 	)
 
 	if event.Err != nil {
-		log.Error("PG/QUERY ", zap.Error(event.Err))
+		if errors.Is(event.Err, sql.ErrNoRows) {
+			log.Warn("PG/QUERY", zap.Error(event.Err))
+		} else {
+			log.Error("PG/QUERY ", zap.Error(event.Err))
+		}
 	} else {
 		log.Info("PG/QUERY")
 	}
