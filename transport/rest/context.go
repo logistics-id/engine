@@ -42,6 +42,11 @@ func (c *Context) Bind(v any) error {
 			return BadRequest()
 		}
 
+		// Bind URL params if struct has any `param` tags
+		if err := c.bindPathParams(v); err != nil {
+			return BadRequest()
+		}
+
 		return nil
 	}
 

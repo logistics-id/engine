@@ -189,7 +189,7 @@ func (c *Client) Publish(ctx context.Context, topic string, data any) error {
 		return fmt.Errorf("RMQ/PUB: marshal error %w", err)
 	}
 
-	requestID, _ := ctx.Value(common.ContextRequestIDKey).(string)
+	requestID := common.GetContextRequestID(ctx)
 	headers := amqp.Table{}
 	if requestID != "" {
 		headers[string(common.ContextRequestIDKey)] = requestID

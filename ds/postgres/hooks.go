@@ -22,17 +22,10 @@ func (h *ZapQueryHook) BeforeQuery(ctx context.Context, event *bun.QueryEvent) c
 }
 
 func (h *ZapQueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
-	requestID := "-"
-	if rid := ctx.Value(common.ContextRequestIDKey); rid != nil {
-		if str, ok := rid.(string); ok {
-			requestID = str
-		}
-	}
-
 	log := h.Logger.With(
 		zap.String("event", event.Operation()),
 		zap.String("query", strings.ReplaceAll(event.Query, "\"", "")),
-		zap.String("request_id", requestID),
+		zap.String("request_id", common.GetContextRequestID(ctx)),
 		zap.Duration("duration", time.Since(event.StartTime)),
 	)
 

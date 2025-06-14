@@ -109,11 +109,13 @@ func NewZapServerLogger(log *zap.Logger) grpc.UnaryServerInterceptor {
 		resp, err = handler(ctx, req)
 
 		var respPayload []byte
-		if pb, ok := resp.(proto.Message); ok {
-			respPayload, err = json.Marshal(pb)
+		if err == nil && resp != nil {
+			if pb, ok := resp.(proto.Message); ok {
+				respPayload, err = json.Marshal(pb)
+			}
 		}
 
-		log.Info("GRPC/SERVER",
+		l := log.With(
 			zap.String("action", "server.response"),
 			zap.String("method", info.FullMethod),
 			zap.String("peer", peerAddr),
@@ -121,8 +123,14 @@ func NewZapServerLogger(log *zap.Logger) grpc.UnaryServerInterceptor {
 			zap.Any("payload", json.RawMessage(reqPayload)),
 			zap.Any("response", json.RawMessage(respPayload)),
 			zap.Duration("duration", time.Since(start)),
-			zap.Error(err),
 		)
+
+		if err != nil {
+			l.Error("GRPC/SERVER", zap.Error(err))
+		} else {
+			l.Info("GRPC/SERVER")
+		}
+
 		return resp, err
 	}
 }

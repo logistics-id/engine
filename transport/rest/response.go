@@ -48,3 +48,10 @@ func NewResponseBody(data any, metas ...*Meta) *ResponseBody {
 
 	return rb
 }
+
+func NewResponseMessage(msg string) *ResponseBody {
+	return &ResponseBody{
+		Success: true,
+		Message: msg,
+	}
+}

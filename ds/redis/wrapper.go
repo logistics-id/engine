@@ -63,7 +63,7 @@ func Save(ctx context.Context, key string, value any) error {
 		zap.String("action", "save"),
 		zap.String("key", key),
 		zap.Duration("duration", time.Since(started)),
-		getReqID(ctx),
+		zap.String("request_id", common.GetContextRequestID(ctx)),
 		zap.Error(err),
 	)
 
@@ -83,7 +83,7 @@ func Read(ctx context.Context, key string, out any) error {
 		zap.String("action", "read"),
 		zap.String("key", key),
 		zap.Duration("duration", time.Since(started)),
-		getReqID(ctx),
+		zap.String("request_id", common.GetContextRequestID(ctx)),
 		zap.Error(err),
 	)
 
@@ -107,7 +107,7 @@ func Delete(ctx context.Context, key string) error {
 		zap.String("action", "delete"),
 		zap.String("key", key),
 		zap.Duration("duration", time.Since(started)),
-		getReqID(ctx),
+		zap.String("request_id", common.GetContextRequestID(ctx)),
 		zap.Error(err),
 	)
 
@@ -125,12 +125,4 @@ func ConfigDefault(prefix string) *Config {
 // ErrNotInitialized returns an error for uninitialized defaultCache.
 func ErrNotInitialized() error {
 	return fmt.Errorf("redis defaultCache is not initialized; call NewConnection first")
-}
-
-func getReqID(ctx context.Context) zap.Field {
-	if reqID, ok := ctx.Value(common.ContextRequestIDKey).(string); ok && reqID != "" {
-		return zap.String("request_id", reqID)
-	}
-
-	return zap.String("request_id", "unknown")
 }

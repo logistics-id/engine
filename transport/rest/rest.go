@@ -15,9 +15,8 @@ import (
 )
 
 type Config struct {
-	Server    string
-	IsDev     bool
-	JwtSecret string
+	Server string
+	IsDev  bool
 }
 
 type RestServer struct {
@@ -176,10 +175,19 @@ func (s *RestServer) HEAD(path string, handler HandlerFunc, mws []func(http.Hand
 func (s *RestServer) WithAuth(requireAuth bool, roles ...string) []func(http.Handler) http.Handler {
 	mws := []func(http.Handler) http.Handler{}
 	if requireAuth {
-		mws = append(mws, JWTAuthMiddleware(s.Config.JwtSecret))
+		mws = append(mws, JWTAuthMiddleware())
 		if len(roles) > 0 {
 			mws = append(mws, RequireRole(roles[0]))
 		}
+	}
+	return mws
+}
+
+func (s *RestServer) Restricted(permission ...string) []func(http.Handler) http.Handler {
+	mws := []func(http.Handler) http.Handler{}
+	mws = append(mws, JWTAuthMiddleware())
+	if len(permission) > 0 {
+		mws = append(mws, RequirePermission(permission[0]))
 	}
 	return mws
 }

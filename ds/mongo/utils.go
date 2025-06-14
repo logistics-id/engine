@@ -120,10 +120,9 @@ func monitoring() *event.CommandMonitor {
 		},
 		Succeeded: func(ctx context.Context, evt *event.CommandSucceededEvent) {
 			if evt.CommandName != "ping" && evt.CommandName != "endSessions" {
-				reqID, _ := ctx.Value(common.ContextRequestIDKey).(string)
 				if cmd, ok := commandCache.Load(evt.RequestID); ok {
 					logger.Info("MGO/CMD SUCCEEDED",
-						zap.String("request_id", reqID),
+						zap.String("request_id", common.GetContextRequestID(ctx)),
 						zap.String("event", evt.CommandName),
 						zap.Duration("duration", evt.Duration),
 						zap.Any("command", commandMap(cmd.(bson.Raw))),
@@ -134,10 +133,9 @@ func monitoring() *event.CommandMonitor {
 		},
 		Failed: func(ctx context.Context, evt *event.CommandFailedEvent) {
 			if evt.CommandName != "ping" && evt.CommandName != "endSessions" {
-				reqID, _ := ctx.Value(common.ContextRequestIDKey).(string)
 				if cmd, ok := commandCache.Load(evt.RequestID); ok {
 					logger.Error("MGO/CMD FAILED",
-						zap.String("request_id", reqID),
+						zap.String("request_id", common.GetContextRequestID(ctx)),
 						zap.String("event", evt.CommandName),
 						zap.Duration("duration", evt.Duration),
 						zap.Any("command", commandMap(cmd.(bson.Raw))),

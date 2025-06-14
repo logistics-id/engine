@@ -34,7 +34,7 @@ func NewClient(ctx context.Context, serviceName string) (*Client, error) {
 	log := Service.logger.With(
 		zap.String("action", "client"),
 		zap.String("service_name", serviceName),
-		zap.String("request_id", ctx.Value(common.ContextRequestIDKey).(string)),
+		zap.String("request_id", common.GetContextRequestID(ctx)),
 	)
 
 	reg := Service.registry
@@ -108,7 +108,7 @@ func NewZapClientLogger(log *zap.Logger) grpc.UnaryClientInterceptor {
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption,
 	) error {
-		reqID := ctx.Value(common.ContextRequestIDKey).(string)
+		reqID := common.GetContextRequestID(ctx)
 
 		var reqPayload []byte
 		if pb, ok := req.(proto.Message); ok {
@@ -122,19 +122,27 @@ func NewZapClientLogger(log *zap.Logger) grpc.UnaryClientInterceptor {
 		err := invoker(ctx, method, req, reply, cc, opts...)
 
 		var respPayload []byte
-		if pb, ok := reply.(proto.Message); ok {
-			respPayload, err = json.Marshal(pb)
+		if err == nil {
+			if pb, ok := reply.(proto.Message); ok {
+				respPayload, err = json.Marshal(pb)
+			}
 		}
 
-		log.Info("GRPC/CLIENT",
+		log = log.With(
 			zap.String("method", method),
 			zap.String("service_host", cc.Target()),
 			zap.String("request_id", reqID),
 			zap.Any("payload", json.RawMessage(reqPayload)),
 			zap.Any("response", json.RawMessage(respPayload)),
 			zap.Duration("duration", time.Duration(time.Since(start))),
-			zap.Error(err),
 		)
+
+		if err != nil {
+			log.Error("GRPC/CLIENT", zap.Error(err))
+		} else {
+			log.Info("GRPC/CLIENT")
+		}
+
 		return err
 	}
 }
