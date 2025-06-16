@@ -1,7 +1,9 @@
 package rest
 
 import (
+	"bufio"
 	"bytes"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -21,6 +23,13 @@ func (rw *responseRecorder) WriteHeader(code int) {
 func (rw *responseRecorder) Write(b []byte) (int, error) {
 	rw.body.Write(b) // capture for log
 	return rw.ResponseWriter.Write(b)
+}
+
+func (r *responseRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := r.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, fmt.Errorf("underlying ResponseWriter does not support hijacking")
 }
 
 func getRealIP(r *http.Request) string {

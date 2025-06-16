@@ -50,6 +50,10 @@ func GetConn() redis.Conn {
 	return cache.Pool.Get()
 }
 
+func GetPool() *redis.Pool {
+	return cache.Pool
+}
+
 // Save stores value under the given key in global defaultCache instance, logs the operation.
 func Save(ctx context.Context, key string, value any) error {
 	if cache == nil {
