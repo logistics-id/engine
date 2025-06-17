@@ -5,8 +5,8 @@ go 1.24.3
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/logistics-id/engine/common v0.0.10-dev
-	github.com/logistics-id/engine/validate v0.0.10-dev
+	github.com/logistics-id/engine/common v0.0.11-dev
+	github.com/logistics-id/engine/validate v0.0.11-dev
 	go.uber.org/zap v1.27.0
 )
 
