@@ -75,7 +75,7 @@ func Subscribe(topic string, handler any) error {
 
 // Publish sends data to the specified topic using the default client.
 func Publish(ctx context.Context, topic string, data any) error {
-	return defaultClient.Publish(ctx, concatPrefix(topic), data)
+	return defaultClient.Publish(ctx, topic, data)
 }
 
 // CloseConnection gracefully closes the default RabbitMQ client connection.
