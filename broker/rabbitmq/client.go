@@ -411,3 +411,7 @@ func (c *Client) Close() error {
 	logger.Debug("RMQ/CLOSED")
 	return nil
 }
+
+func (c *Client) GetChannel() *amqp.Channel {
+	return c.channel
+}

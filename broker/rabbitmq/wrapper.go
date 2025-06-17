@@ -87,3 +87,7 @@ func CloseConnection() error {
 func concatPrefix(topic string) string {
 	return fmt.Sprintf("%s.%s", defaultClient.config.Prefix, topic)
 }
+
+func GetClient() *Client {
+	return defaultClient
+}
