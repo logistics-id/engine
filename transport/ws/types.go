@@ -34,7 +34,7 @@ func (c *Conn) Reply(payload any) error {
 
 // Envelope defines the wire format for message delivery.
 type Envelope struct {
-	UserID      string          `json:"userID,omitempty"`
+	UserID      string          `json:"user_id,omitempty"`
 	Type        string          `json:"type"`
 	Payload     json.RawMessage `json:"payload"`
 	ID          string          `json:"id,omitempty"`

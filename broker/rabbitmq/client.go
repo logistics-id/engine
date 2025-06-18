@@ -283,7 +283,7 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 			args["x-dead-letter-exchange"] = c.config.DeadLetter
 		}
 
-		q, err := ch.QueueDeclare(queue, c.config.Durable, false, false, false, args)
+		q, err := ch.QueueDeclare(queue, c.config.Durable, true, false, false, args)
 		if err != nil {
 			logger.Error("RMQ/SUB: queue declare failed", zap.Error(err))
 			ch.Close()
@@ -321,7 +321,7 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 				raw := json.RawMessage(string(d.Body))
 				start := time.Now()
 
-				logger = logger.With(
+				log := logger.With(
 					zap.String("message_id", d.MessageId),
 					zap.Any("request_id", requestID),
 					zap.Any("payload", &raw),
@@ -330,7 +330,7 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 				// Deserialize message payload into expected type
 				target := reflect.New(reflect.TypeOf(handler).In(0)).Interface()
 				if err := json.Unmarshal(d.Body, target); err != nil {
-					logger.Error("RMQ/SUB: json unmarshal failed", zap.Error(err))
+					log.Error("RMQ/SUB: json unmarshal failed", zap.Error(err))
 					d.Nack(false, false) // reject without requeue
 					continue
 				}
@@ -343,16 +343,16 @@ func (c *Client) runSubscriber(queue string, routingKey string, handler any) {
 				})
 
 				duration := time.Since(start)
-				logger = logger.With(zap.Duration("duration", duration))
+				log = log.With(zap.Duration("duration", duration))
 
 				// If handler returns error (last return), check it
 				if len(results) == 1 {
 					if err, ok := results[0].Interface().(error); ok && err != nil {
-						logger.Error("RMQ/SUB: handler returned error", zap.Error(err))
+						log.Error("RMQ/SUB: handler returned error", zap.Error(err))
 						d.Nack(false, true) // requeue on handler error
 						continue
 					} else {
-						logger.Info("RMQ/SUB SUCCEED")
+						log.Info("RMQ/SUB SUCCEED")
 					}
 				}
 			}

@@ -48,7 +48,7 @@ func (r *RedisRegistry) GetUserPods(ctx context.Context, userID string) ([]strin
 func NewRedisRegistry(redisPool *redis.Pool) *RedisRegistry {
 	return &RedisRegistry{
 		Pool:   redisPool,
-		TTL:    60 * time.Second,
+		TTL:    24 * 60 * 60 * time.Second,
 		Prefix: "ws",
 	}
 }

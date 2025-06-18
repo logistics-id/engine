@@ -132,9 +132,7 @@ func (ws *WebSocket) readLoop(ctx context.Context, c *Conn) {
 		close(c.Close)
 		ws.Hub.Remove(c)
 		_ = ws.Registry.MarkOffline(ctx, c.UserID, ws.PodID)
-		if ws.Logger != nil {
-			ws.Logger.Info("user disconnected", zap.String("userID", c.UserID))
-		}
+		ws.Logger.Info("user disconnected", zap.String("userID", c.UserID))
 	}()
 	c.WS.SetReadLimit(65536)
 	c.WS.SetReadDeadline(time.Now().Add(30 * time.Second))
@@ -145,22 +143,16 @@ func (ws *WebSocket) readLoop(ctx context.Context, c *Conn) {
 	for {
 		_, msg, err := c.WS.ReadMessage()
 		if err != nil {
-			if ws.Logger != nil {
-				ws.Logger.Warn("read message error", zap.Error(err))
-			}
+			ws.Logger.Warn("read message error", zap.Error(err))
 			return
 		}
 		if ws.RateLimiter != nil && !ws.RateLimiter.Allow(ctx, c.UserID) {
-			if ws.Logger != nil {
-				ws.Logger.Warn("rate limit exceeded", zap.String("userID", c.UserID))
-			}
+			ws.Logger.Warn("rate limit exceeded", zap.String("userID", c.UserID))
 			continue
 		}
 		var env Envelope
 		if err := json.Unmarshal(msg, &env); err != nil {
-			if ws.Logger != nil {
-				ws.Logger.Warn("invalid JSON payload", zap.Error(err))
-			}
+			ws.Logger.Warn("invalid JSON payload", zap.Error(err))
 			continue
 		}
 		_ = ws.Router.Dispatch(ctx, env.Type, env.Payload, c)
@@ -175,9 +167,7 @@ func (ws *WebSocket) writeLoop(c *Conn) {
 		case msg := <-c.Send:
 			c.WS.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := c.WS.WriteMessage(websocket.TextMessage, msg); err != nil {
-				if ws.Logger != nil {
-					ws.Logger.Warn("write message error", zap.Error(err))
-				}
+				ws.Logger.Warn("write message error", zap.Error(err))
 				return
 			}
 		case <-ping.C:

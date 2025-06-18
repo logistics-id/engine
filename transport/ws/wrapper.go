@@ -4,14 +4,14 @@ import (
 	"os"
 
 	"github.com/gomodule/redigo/redis"
-	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/logistics-id/engine/broker/rabbitmq"
 	"go.uber.org/zap"
 )
 
 // Default is an optional global WebSocket instance.
 var Default *WebSocket
 
-func NewDefault(redisPool *redis.Pool, rabbitChan *amqp.Channel, logger *zap.Logger, Origins ...string) *WebSocket {
+func NewDefault(redisPool *redis.Pool, broker *rabbitmq.Client, logger *zap.Logger, Origins ...string) *WebSocket {
 	hostname, _ := os.Hostname()
 
 	registry := NewRedisRegistry(redisPool)
@@ -21,11 +21,7 @@ func NewDefault(redisPool *redis.Pool, rabbitChan *amqp.Channel, logger *zap.Log
 	limiter := NewRedisRateLimiter(redisPool, logger)
 	ackstore := NewAckStore(redisPool, logger)
 
-	sender, e := NewRabbitSender(rabbitChan, hostname, hub, registry, logger)
-
-	if e != nil {
-		panic(e)
-	}
+	sender := NewRMQSender(hostname, broker, hub, registry, logger.With(zap.String("component", "sender")))
 
 	ws := &WebSocket{
 		Hub:         hub,
