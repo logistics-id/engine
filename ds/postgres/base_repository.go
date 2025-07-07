@@ -124,7 +124,7 @@ func (r *BaseRepository[T]) FindAll(opts *common.QueryOption, customQuery Custom
 	q.Limit(int(opts.GetLimit()))
 	q.Offset(int(opts.GetOffset()))
 
-	if err := q.Scan(r.Context, &result); err != nil {
+	if err := q.Scan(r.Context); err != nil {
 		return nil, 0, err
 	}
 

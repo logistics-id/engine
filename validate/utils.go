@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
@@ -101,18 +102,18 @@ func dataLength(val interface{}) (x float64) {
 	v := reflect.ValueOf(val)
 	// check if type of data is pointer
 	if v.Kind() == reflect.Ptr {
-		//v is value of *val
+		// v is value of *val
 		v = v.Elem()
 	}
-	//switch base on type
+	// switch base on type
 	switch v.Kind() {
 	case reflect.String:
-		//count string length and change it to float64
+		// count string length and change it to float64
 		str := utf8.RuneCountInString(toString(v))
 		x = float64(str)
 		break
 	case reflect.Slice:
-		//length of slice to float64 (by Len() from lib value
+		// length of slice to float64 (by Len() from lib value
 		slc := v.Len()
 		x = float64(slc)
 		break
@@ -161,6 +162,20 @@ func ValidPhone(text string) (p string, e error) {
 	fp := string(p[0:2])
 	if fp != "62" {
 		e = errors.New("invalid format phone")
+	}
+
+	return
+}
+
+func ValidDate(text string, f string) (result time.Time, e error) {
+	if f == "" {
+		f = "2006-01-02"
+	}
+
+	result, e = time.Parse(f, text)
+
+	if e != nil {
+		e = errors.New("invalid format date.")
 	}
 
 	return
