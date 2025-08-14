@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime"
 	"strings"
@@ -38,10 +39,10 @@ func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *Res
 	r := mux.NewRouter()
 
 	// Built-in middleware
+	r.Use(CORSMiddleware())
 	r.Use(RequestIDMiddleware())
 	r.Use(RecoveryMiddleware(logger))
 	r.Use(LoggingMiddleware(logger))
-	r.Use(CORSMiddleware())
 
 	// Standard 404 and 405 handling
 	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +57,14 @@ func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *Res
 	})
 
 	r.MethodNotAllowedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		ctx := &Context{
 			Context:  r.Context(),
 			Request:  r,
@@ -196,7 +205,15 @@ func (s *RestServer) Restricted(permission ...string) []func(http.Handler) http.
 func registerDefaultRoutes(r *mux.Router) {
 	r.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+
+		resp := map[string]string{
+			"host":    os.Hostname(),
+			"service": os.Getenv("SERVICE_NAME"),
+			"time":    time.Now(),
+			"version": os.Getenv("SERVICE_VERSION"),
+		}
+
+		_ = json.NewEncoder(w).Encode(resp)
 	}).Methods(http.MethodGet)
 }
 

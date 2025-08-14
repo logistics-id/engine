@@ -4,7 +4,8 @@ go 1.24.3
 
 require (
 	github.com/gomodule/redigo v1.9.2
-	github.com/logistics-id/engine/common v0.0.13-dev
+	github.com/google/uuid v1.6.0
+	github.com/logistics-id/engine/common v0.0.16-dev
 	go.uber.org/zap v1.27.0
 )
 
