@@ -1,3 +1,4 @@
+// Package rabbitmq provides a RabbitMQ client for publishing and subscribing to messages.
 package rabbitmq
 
 import (

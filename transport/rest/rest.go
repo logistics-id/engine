@@ -207,9 +207,9 @@ func registerDefaultRoutes(r *mux.Router) {
 		w.Header().Set("Content-Type", "application/json")
 
 		resp := map[string]string{
-			"host":    os.Hostname(),
+			"host":    os.Getenv("HOSTNAME"),
 			"service": os.Getenv("SERVICE_NAME"),
-			"time":    time.Now(),
+			"time":    time.Now().String(),
 			"version": os.Getenv("SERVICE_VERSION"),
 		}
 

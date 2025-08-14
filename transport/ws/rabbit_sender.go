@@ -1,3 +1,4 @@
+// Package ws provides WebSocket transport logic for message sending via RabbitMQ.
 package ws
 
 import (
