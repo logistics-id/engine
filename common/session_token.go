@@ -21,6 +21,7 @@ type SessionClaims struct {
 	DisplayName string   `json:"display_name"`
 	Email       string   `json:"email"`
 	Permissions []string `json:"permission"`
+	Type        string   `json:"type"`
 
 	jwt.RegisteredClaims
 }
