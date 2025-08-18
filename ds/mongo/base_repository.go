@@ -8,6 +8,7 @@ import (
 
 	"github.com/logistics-id/engine/common"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -43,12 +44,22 @@ func (r *BaseRepository[T]) Insert(entity *T) error {
 }
 
 func (r *BaseRepository[T]) FindByID(id any) (*T, error) {
+	idStr, ok := id.(string)
+	if !ok {
+		return nil, errors.New("id not string.")
+	}
+
+	mid, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		return nil, err
+	}
+
 	var result T
-	filter := bson.M{"_id": id}
+	filter := bson.M{"_id": mid}
 	if r.enableSoftDelete {
 		filter["is_deleted"] = false
 	}
-	err := r.Collection.FindOne(r.Context, filter).Decode(&result)
+	err = r.Collection.FindOne(r.Context, filter).Decode(&result)
 	if err != nil {
 		return nil, err
 	}
