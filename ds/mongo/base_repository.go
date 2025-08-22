@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/logistics-id/engine/common"
 	"go.mongodb.org/mongo-driver/bson"
@@ -81,11 +82,23 @@ func (r *BaseRepository[T]) Update(entity *T, fields ...string) error {
 	typ := val.Type()
 
 	for _, field := range fields {
-		structField, ok := typ.FieldByName(field)
-		if !ok {
+		var found bool
+
+		// cari field berdasarkan bson tag
+		for i := 0; i < typ.NumField(); i++ {
+			structField := typ.Field(i)
+			bsonTag := strings.Split(structField.Tag.Get("bson"), ",")[0]
+
+			if bsonTag == field {
+				update[bsonTag] = val.Field(i).Interface()
+				found = true
+				break
+			}
+		}
+
+		if !found {
 			return fmt.Errorf("field %s not found on struct", field)
 		}
-		update[structField.Tag.Get("bson")] = val.FieldByName(field).Interface()
 	}
 
 	_, err = r.Collection.UpdateByID(r.Context, id, bson.M{"$set": update})
@@ -162,7 +175,9 @@ func extractEntityID(entity any) (any, error) {
 
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
-		if tag := field.Tag.Get("bson"); tag == "_id" {
+		bsons := strings.Split(field.Tag.Get("bson"), ",")
+
+		if tag := bsons[0]; tag == "_id" {
 			return val.Field(i).Interface(), nil
 		}
 	}

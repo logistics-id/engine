@@ -103,6 +103,7 @@ func getID(m Model) any {
 		return nil
 	}
 	s := v.Elem()
+
 	// Try "_id" (MongoDB convention)
 	idField := s.FieldByName("_id")
 	if idField.IsValid() {
