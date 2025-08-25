@@ -101,13 +101,44 @@ func JWTAuthMiddleware() func(http.Handler) http.Handler {
 				Response: w,
 			}
 
-			authHeader := r.Header.Get("Authorization")
-			if !strings.HasPrefix(authHeader, "Bearer ") {
+			// 1) Try Authorization: Bearer <jwt>
+			tokenStr := ""
+			if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+				tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
+			}
+
+			// 2) Fallback: query param ?token=... or ?access_token=...
+			if tokenStr == "" {
+				q := r.URL.Query()
+				if v := strings.TrimSpace(q.Get("token")); v != "" {
+					tokenStr = v
+				} else if v := strings.TrimSpace(q.Get("access_token")); v != "" {
+					tokenStr = v
+				}
+			}
+
+			// 3) Optional fallback: Sec-WebSocket-Protocol carrying the token
+			//    e.g. client: new WebSocket(url, ['jwt', '<token>'])
+			if tokenStr == "" {
+				if protos := r.Header.Values("Sec-WebSocket-Protocol"); len(protos) > 0 {
+					// Flatten and pick the last non-empty that isn't a known label
+					for _, p := range protos {
+						for _, part := range strings.Split(p, ",") {
+							part = strings.TrimSpace(part)
+							if part == "" || strings.EqualFold(part, "jwt") || strings.EqualFold(part, "bearer") {
+								continue
+							}
+							tokenStr = part
+						}
+					}
+				}
+			}
+
+			if tokenStr == "" {
 				ctx.Error(http.StatusUnauthorized, MsgUnauthorized, nil)
 				return
 			}
 
-			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 			claims, err := common.TokenDecode(tokenStr)
 			if err != nil || claims == nil {
 				ctx.Error(http.StatusUnauthorized, MsgUnauthorized, nil)
