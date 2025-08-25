@@ -3,7 +3,7 @@ module github.com/logistics-id/engine/ds/mongo
 go 1.24.3
 
 require (
-	github.com/logistics-id/engine/common v0.0.18-dev
+	github.com/logistics-id/engine/common v0.0.19-dev
 	go.mongodb.org/mongo-driver v1.17.4
 	go.uber.org/zap v1.27.0
 	golang.org/x/net v0.43.0
