@@ -56,3 +56,15 @@ func (h *Hub) SendLocal(userID string, msg []byte) error {
 	}
 	return nil
 }
+
+// ListUserIDs returns all currently connected user IDs.
+func (h *Hub) ListUserIDs() []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	ids := make([]string, 0, len(h.sockets))
+	for userID := range h.sockets {
+		ids = append(ids, userID)
+	}
+	return ids
+}

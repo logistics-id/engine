@@ -68,6 +68,7 @@ type Registry interface {
 	MarkOnline(ctx context.Context, userID, podID string) error
 	MarkOffline(ctx context.Context, userID, podID string) error
 	GetUserPods(ctx context.Context, userID string) ([]string, error)
+	GetUsers(ctx context.Context) ([]string, error)
 }
 
 // Sender interface abstracts local + cross-pod message delivery.
