@@ -32,10 +32,6 @@ type Context struct {
 
 // Bind decodes the JSON request body into the given struct
 func (c *Context) Bind(v any) error {
-	if c.Request.Body == nil {
-		return BadRequest()
-	}
-
 	if c.Request.Method == http.MethodGet {
 		// Bind from URL query params
 		if err := c.bindQueryParams(v); err != nil {
@@ -50,11 +46,16 @@ func (c *Context) Bind(v any) error {
 		return nil
 	}
 
-	decoder := json.NewDecoder(c.Request.Body)
-	// decoder.DisallowUnknownFields()
-	if err := decoder.Decode(v); err != nil {
-		c.logger.Warn("Bind error", zap.Error(err))
-		return BadRequest()
+	// For POST/PUT/DELETE, check if body has content before decoding
+	hasBody := c.Request.ContentLength > 0
+
+	if hasBody {
+		decoder := json.NewDecoder(c.Request.Body)
+		// decoder.DisallowUnknownFields()
+		if err := decoder.Decode(v); err != nil {
+			c.logger.Warn("Bind error", zap.Error(err))
+			return BadRequest()
+		}
 	}
 
 	// Bind URL params if struct has any `param` tags
@@ -62,6 +63,7 @@ func (c *Context) Bind(v any) error {
 		return BadRequest()
 	}
 
+	// Only validate if we decoded a body (actions without body don't need validation)
 	if err := c.Validate(v); !err.Valid {
 		return err
 	}
@@ -159,15 +161,23 @@ func (c *Context) Param(key string) string {
 func (c *Context) Respond(body any, err error) error {
 	switch {
 	case err == nil:
+		// Determine status code: use custom if set,
+		statusCode := http.StatusOK
+
 		if rb, ok := body.(*ResponseBody); ok {
+			// Use custom status code if set
+			if rb.StatusCode > 0 {
+				statusCode = rb.StatusCode
+			}
+
 			if rb.Message == "" {
 				rb.Message = string(MsgSuccess)
 			}
 			rb.Success = true
-			return c.JSON(http.StatusOK, rb)
+			return c.JSON(statusCode, rb)
 		}
 
-		return c.JSON(http.StatusOK, ResponseBody{
+		return c.JSON(statusCode, ResponseBody{
 			Success: true,
 			Message: string(MsgSuccess),
 			Data:    body,
@@ -210,6 +220,24 @@ func (c *Context) bindQueryParams(v any) error {
 
 func setFieldValue(field reflect.Value, value string) error {
 	if !field.CanSet() {
+		return nil
+	}
+
+	// Handle pointer types
+	if field.Kind() == reflect.Ptr {
+		// Get the element type
+		elemType := field.Type().Elem()
+
+		// Create a new instance of the element type
+		elemValue := reflect.New(elemType).Elem()
+
+		// Set the value on the element
+		if err := setFieldValue(elemValue, value); err != nil {
+			return err
+		}
+
+		// Set the pointer to point to the new value
+		field.Set(elemValue.Addr())
 		return nil
 	}
 

@@ -72,11 +72,11 @@ func Run(appMain func(ctx context.Context)) {
 	time.Sleep(6 * time.Second)
 }
 
-func Init(name string) {
+func Init(name string, version string, isDev bool) {
 	Config = &config{
 		Name:    name,
-		Version: os.Getenv("SERVICE_VERSION"),
-		IsDev:   os.Getenv("DEBUG_MODE") == "true",
+		Version: version,
+		IsDev:   isDev,
 	}
 
 	Logger = log.NewLogger(Config.Name, Config.IsDev).With(

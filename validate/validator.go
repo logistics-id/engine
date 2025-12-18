@@ -253,6 +253,7 @@ var tagsFn = map[string]validatorFn{
 	"in":              validIn,
 	"not_in":          validNotIn,
 	"uuid":            validUUID,
+	"password":        validPassword,
 }
 
 // New creates a new Validation instances.

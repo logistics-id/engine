@@ -253,6 +253,102 @@ func IsIn(value interface{}, param ...string) bool {
 	return false
 }
 
+// IsPassword validates password according to policy:
+// - Minimum 8 characters
+// - At least one uppercase letter
+// - At least one lowercase letter
+// - At least one number
+// - At least one special character
+// - Not in common passwords list
+func IsPassword(value interface{}) bool {
+	str := toString(value)
+	if !IsNotEmpty(str) {
+		return false
+	}
+
+	password := str
+
+	// Check minimum length
+	if len(password) < 8 {
+		return false
+	}
+
+	// Check complexity requirements
+	var hasUpper, hasLower, hasNumber, hasSpecial bool
+
+	for _, char := range password {
+		switch {
+		case 'A' <= char && char <= 'Z':
+			hasUpper = true
+		case 'a' <= char && char <= 'z':
+			hasLower = true
+		case '0' <= char && char <= '9':
+			hasNumber = true
+		default:
+			// Check for special characters (punctuation or symbols)
+			if (char >= 33 && char <= 47) || (char >= 58 && char <= 64) ||
+				(char >= 91 && char <= 96) || (char >= 123 && char <= 126) {
+				hasSpecial = true
+			}
+		}
+	}
+
+	if !hasUpper || !hasLower || !hasNumber || !hasSpecial {
+		return false
+	}
+
+	// Check common passwords
+	return !isCommonPassword(password)
+}
+
+// isCommonPassword checks if password is in the common passwords list
+func isCommonPassword(password string) bool {
+	// Convert to lowercase for case-insensitive comparison
+	lowerPassword := strings.ToLower(password)
+
+	// Common passwords list (top 100 most common passwords)
+	commonPasswords := []string{
+		"password", "12345678", "123456789", "1234567890", "qwerty",
+		"abc123", "password1", "password123", "admin", "letmein",
+		"welcome", "monkey", "1234567", "123456", "qwerty123",
+		"qwertyuiop", "123321", "dragon", "sunshine", "princess",
+		"football", "iloveyou", "master", "hello", "freedom",
+		"whatever", "qazwsx", "trustno1", "654321", "jordan23",
+		"harley", "shadow", "superman", "qwertyui", "michael",
+		"jennifer", "hunter", "buster", "soccer", "tigger",
+		"batman", "test", "pass", "thomas", "hockey",
+		"ranger", "daniel", "hannah", "maggie", "jessica",
+		"charlie", "michelle", "jordan", "andrew", "pepper",
+		"taylor", "flower", "joshua", "robert", "computer",
+		"summer", "william", "david", "james", "matthew",
+		"olivia", "samantha", "ashley", "amanda", "jasmine",
+		"nicole", "elizabeth", "stephanie", "emily", "christopher",
+		"joseph", "anthony", "mark", "donald", "steven",
+		"paul", "kenneth", "kevin", "brian", "george",
+		"timothy", "ronald", "jason", "edward", "jeffrey",
+		"ryan", "jacob", "gary", "nicholas", "eric",
+		"jonathan", "stephen", "larry", "justin", "scott",
+		"brandon", "benjamin", "samuel", "frank", "gregory",
+		"raymond", "alexander", "patrick", "jack", "dennis",
+		"jerry",
+	}
+
+	for _, common := range commonPasswords {
+		if lowerPassword == common {
+			return true
+		}
+		// Also check if password contains common password as substring (for variations)
+		if len(lowerPassword) >= len(common) {
+			// Check if it's a simple variation (e.g., "password123", "123password")
+			if strings.HasPrefix(lowerPassword, common) || strings.HasSuffix(lowerPassword, common) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // IsNotIn check if the value is not exists in given param
 func IsNotIn(value interface{}, param ...string) bool {
 	value = toString(value)

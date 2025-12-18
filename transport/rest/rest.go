@@ -44,8 +44,16 @@ func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *Res
 	r.Use(RecoveryMiddleware(logger))
 	r.Use(LoggingMiddleware(logger))
 
+	// Collect middleware chain for special handlers
+	builtInMiddleware := []func(http.Handler) http.Handler{
+		CORSMiddleware(),
+		RequestIDMiddleware(),
+		RecoveryMiddleware(logger),
+		LoggingMiddleware(logger),
+	}
+
 	// Standard 404 and 405 handling
-	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	notFoundHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := &Context{
 			Context:  r.Context(),
 			Request:  r,
@@ -55,8 +63,9 @@ func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *Res
 
 		_ = ctx.Error(http.StatusNotFound, MsgNotFound, nil)
 	})
+	r.NotFoundHandler = chainMiddleware(notFoundHandler, builtInMiddleware)
 
-	r.MethodNotAllowedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	methodNotAllowedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
@@ -73,6 +82,7 @@ func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *Res
 		}
 		_ = ctx.Error(http.StatusMethodNotAllowed, Message("method not allowed"), nil)
 	})
+	r.MethodNotAllowedHandler = chainMiddleware(methodNotAllowedHandler, builtInMiddleware)
 
 	// Add /healthz route
 	registerDefaultRoutes(r)

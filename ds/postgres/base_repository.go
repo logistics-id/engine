@@ -1,3 +1,5 @@
+// Package postgres provides PostgreSQL database connectivity and repository patterns
+// using Bun ORM with integrated logging and generic base repository functionality.
 package postgres
 
 import (
@@ -8,10 +10,11 @@ import (
 	"github.com/uptrace/bun"
 )
 
+// CustomQueryFn is a function type for custom query modifications specific to Bun/PostgreSQL
 type CustomQueryFn func(q *bun.SelectQuery) *bun.SelectQuery
 
 type BaseRepository[T any] struct {
-	DB               *bun.DB
+	DB               bun.IDB
 	Context          context.Context
 	table            string
 	searchFields     []string
@@ -30,8 +33,29 @@ func NewBaseRepository[T any](db *bun.DB, table string, searchFields, defaultRel
 }
 
 func (r *BaseRepository[T]) WithContext(ctx context.Context) common.BaseRepositoryInterface[T] {
+	return r.WithCtx(ctx)
+}
+
+// WithCtx returns a new BaseRepository instance with the given context.
+// This method returns the concrete type, allowing access to postgres-specific methods.
+// Use this in custom repositories to enable method chaining with postgres-specific methods.
+func (r *BaseRepository[T]) WithCtx(ctx context.Context) *BaseRepository[T] {
 	return &BaseRepository[T]{
 		DB:               r.DB,
+		Context:          ctx,
+		table:            r.table,
+		searchFields:     r.searchFields,
+		defaultRelations: r.defaultRelations,
+		enableSoftDelete: r.enableSoftDelete,
+	}
+}
+
+// WithTx returns a new BaseRepository instance with the given transaction context.
+// This method returns the concrete type, allowing access to postgres-specific methods.
+// Use this when you need to execute multiple operations within a transaction.
+func (r *BaseRepository[T]) WithTx(ctx context.Context, tx bun.Tx) *BaseRepository[T] {
+	return &BaseRepository[T]{
+		DB:               tx,
 		Context:          ctx,
 		table:            r.table,
 		searchFields:     r.searchFields,
@@ -140,10 +164,35 @@ func (r *BaseRepository[T]) FindOne(customQuery CustomQueryFn) (*T, error) {
 		q = customQuery(q)
 	}
 
+	for _, rel := range r.defaultRelations {
+		q.Relation(rel)
+	}
+
 	err := q.Limit(1).Scan(r.Context, &result)
 	if err != nil {
 		return nil, err
 	}
 
 	return &result, nil
+}
+
+// RunInTx executes a function within a database transaction.
+// This method provides full control - you receive the context and transaction,
+// and can create multiple repository instances with WithTx as needed.
+// Use this when you need to work with multiple different repositories in the same transaction.
+func (r *BaseRepository[T]) RunInTx(ctx context.Context, fn func(context.Context, bun.Tx) error) error {
+	return r.DB.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		return fn(ctx, tx)
+	})
+}
+
+// RunInTxWithRepo executes a function within a database transaction,
+// automatically passing a repository instance with the transaction context.
+// This is a convenience method for simpler cases where you only need one repository.
+// For multiple repositories or more control, use RunInTx instead.
+func (r *BaseRepository[T]) RunInTxWithRepo(ctx context.Context, fn func(*BaseRepository[T]) error) error {
+	return r.DB.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		repoWithTx := r.WithTx(ctx, tx)
+		return fn(repoWithTx)
+	})
 }

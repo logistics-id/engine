@@ -52,9 +52,14 @@ func TokenEncode(claim *SessionClaims) (*TokenPair, error) {
 
 func TokenDecode(tokenStr string) (*SessionClaims, error) {
 	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = os.Getenv("JWT_KEY")
+	}
+
+	// Try parsing as MapClaims first (more flexible)
 	token, err := jwt.ParseWithClaims(
 		tokenStr,
-		&SessionClaims{},
+		jwt.MapClaims{},
 		func(t *jwt.Token) (any, error) {
 			return []byte(secret), nil
 		},
@@ -62,7 +67,36 @@ func TokenDecode(tokenStr string) (*SessionClaims, error) {
 	if err != nil || !token.Valid {
 		return nil, err
 	}
-	return token.Claims.(*SessionClaims), nil
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, errors.New("invalid claims type")
+	}
+
+	// Convert MapClaims to SessionClaims
+	sc := &SessionClaims{}
+	if sub, ok := claims["sub"].(string); ok {
+		sc.Subject = sub
+	}
+	if username, ok := claims["username"].(string); ok {
+		sc.Username = username
+	}
+	if app, ok := claims["app"].(string); ok {
+		sc.Type = app
+	}
+	if sid, ok := claims["sid"].(string); ok {
+		sc.ID = sid
+	}
+	if roles, ok := claims["roles"].([]interface{}); ok {
+		sc.Permissions = make([]string, len(roles))
+		for i, r := range roles {
+			if str, ok := r.(string); ok {
+				sc.Permissions[i] = str
+			}
+		}
+	}
+
+	return sc, nil
 }
 
 func GetSession(ctx context.Context) (*SessionClaims, error) {

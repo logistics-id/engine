@@ -2,11 +2,12 @@ package rest
 
 // Response defines the standard structure for all HTTP responses
 type ResponseBody struct {
-	Success bool   `json:"success"`
-	Message string `json:"message,omitempty"`
-	Data    any    `json:"data,omitempty"`
-	Errors  any    `json:"errors,omitempty"`
-	Meta    *Meta  `json:"meta,omitempty"`
+	Success    bool   `json:"success"`
+	Message    string `json:"message,omitempty"`
+	Data       any    `json:"data,omitempty"`
+	Errors     any    `json:"errors,omitempty"`
+	Meta       *Meta  `json:"meta,omitempty"`
+	StatusCode int    `json:"-"` // HTTP status code (not serialized in JSON)
 }
 
 type Meta struct {
