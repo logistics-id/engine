@@ -81,7 +81,12 @@ func CORSMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+			// Keep this in sync with clients that send application context headers.
+			// Note: header matching is case-insensitive, but browsers compare against this allow-list.
+			w.Header().Set(
+				"Access-Control-Allow-Headers",
+				"Content-Type, Authorization, X-Requested-With, X-Terminal-ID, X-Gate-Lane-ID",
+			)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)

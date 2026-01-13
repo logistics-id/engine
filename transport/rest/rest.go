@@ -68,7 +68,10 @@ func NewServer(cfg *Config, logger *zap.Logger, register func(*RestServer)) *Res
 	methodNotAllowedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+			w.Header().Set(
+				"Access-Control-Allow-Headers",
+				"Content-Type, Authorization, X-Requested-With, X-Terminal-ID, X-Gate-Lane-ID",
+			)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
 			w.WriteHeader(http.StatusNoContent)
 			return
