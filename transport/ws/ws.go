@@ -126,6 +126,24 @@ func (ws *WebSocket) RegisterConn(w http.ResponseWriter, r *http.Request, ctx co
 	return nil
 }
 
+// BroadcastAll sends a message to all users across the cluster (multi-pod aware).
+func (ws *WebSocket) BroadcastAll(ctx context.Context, payload Envelope, excludeUserID string) error {
+	// Ambil semua user dari registry (Redis)
+	userIDs, _ := ws.Registry.GetUsers(ctx)
+	for _, userID := range userIDs {
+		if excludeUserID == userID {
+			continue
+		}
+
+		err := ws.SendToUser(ctx, userID, payload) // cluster-aware via RabbitMQ
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (ws *WebSocket) readLoop(ctx context.Context, c *Conn) {
 	defer func() {
 		_ = c.WS.Close()
