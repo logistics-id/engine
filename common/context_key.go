@@ -1,6 +1,8 @@
 package common
 
-import "context"
+import (
+	"context"
+)
 
 type ContextKey string
 
@@ -25,6 +27,14 @@ func GetContextRequestID(ctx context.Context) string {
 
 func GetContextSession(ctx context.Context) *SessionClaims {
 	if v, ok := ctx.Value(ContextUserKey).(*SessionClaims); ok {
+		return v
+	}
+
+	return nil
+}
+
+func GetContextSessionGeneric[T any](ctx context.Context) *T {
+	if v, ok := ctx.Value(ContextUserKey).(*T); ok {
 		return v
 	}
 
