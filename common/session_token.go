@@ -71,6 +71,13 @@ func TokenEncode(c jwt.Claims) (*TokenPair, error) {
 
 func TokenDecode(tokenStr string) (jwt.Claims, error) {
 	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = os.Getenv("JWT_KEY")
+	}
+
+	if secret == "" {
+		return nil, errors.New("JWT secret not set")
+	}
 
 	// gunakan claimFactory kalau sudah diset di service
 	var claims jwt.Claims
@@ -80,14 +87,47 @@ func TokenDecode(tokenStr string) (jwt.Claims, error) {
 		claims = &SessionClaims{}
 	}
 
-	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
-		return []byte(secret), nil
-	})
+	token, err := jwt.ParseWithClaims(
+		tokenStr,
+		claims,
+		func(t *jwt.Token) (any, error) {
+			return []byte(secret), nil
+		},
+	)
+
 	if err != nil || !token.Valid {
 		return nil, err
 	}
 
-	return token.Claims, nil
+	// 🔽 tambahan mapping untuk backward compatibility
+	// 🔥 SAFE mapping
+	var base *SessionClaims
+
+	switch c := claims.(type) {
+	case *SessionClaims:
+		base = c
+	case interface{ GetBase() *SessionClaims }:
+		base = c.GetBase()
+	}
+
+	if base != nil {
+		if mc, ok := token.Claims.(jwt.MapClaims); ok {
+			if sub, ok := mc["sub"].(string); ok {
+				base.Subject = sub
+			}
+			if username, ok := mc["username"].(string); ok {
+				base.Username = username
+			}
+			if app, ok := mc["app"].(string); ok {
+				base.Type = app
+			}
+			if sid, ok := mc["sid"].(string); ok {
+				base.ID = sid
+			}
+		}
+	}
+
+	return claims, nil
 }
 
 func getSession(ctx context.Context) (*SessionClaims, error) {

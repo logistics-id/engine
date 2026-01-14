@@ -20,16 +20,22 @@ With Engine, development can confidently build, deploy, and scale microservices 
 This engine package provides robust, production-ready libraries for working with external systems and inter-service communication, including:
 
 - **Data Stores:**
-  - **MongoDB**: `engine/ds/mongo` — Full-featured library for MongoDB operations and lifecycle management.
-  - **PostgreSQL**: `engine/ds/postgres` — Abstraction for PostgreSQL with connection pooling and helpers.
-  - **Redis**: `engine/ds/redis` — Fast access and management of Redis with ready-to-use utilities.
+  - **[MongoDB](ds/mongo/README.md)**: `engine/ds/mongo` — Full-featured library for MongoDB operations and lifecycle management.
+  - **[PostgreSQL](ds/postgres/README.md)**: `engine/ds/postgres` — Abstraction for PostgreSQL with connection pooling and helpers.
+  - **[Redis](ds/redis/README.md)**: `engine/ds/redis` — Fast access and management of Redis with ready-to-use utilities.
 - **Message Brokers:**
-  - **RabbitMQ**: `engine/broker/rabbitmq` — Complete AMQP (RabbitMQ) client with publisher/subscriber abstractions and reliability features.
+  - **[RabbitMQ](broker/rabbitmq/README.md)**: `engine/broker/rabbitmq` — Complete AMQP (RabbitMQ) client with publisher/subscriber abstractions and reliability features.
+  - **[NATS](broker/nats/README.md)**: `engine/broker/nats` — NATS client integration for lightweight messaging.
 - **Transport Protocols:**
-  - **gRPC**: `engine/protocol/grpc` — Idiomatic server/client layer, service discovery, and registry integration.
-  - **REST**: `engine/protocol/rest` — Flexible HTTP/REST server with built-in middleware and error handling.
+  - **[gRPC](transport/grpc/README.md)**: `engine/transport/grpc` — Idiomatic server/client layer, service discovery, and registry integration.
+  - **[REST](transport/rest/README.md)**: `engine/transport/rest` — Flexible HTTP/REST server with built-in middleware and error handling.
+  - **[WebSockets](transport/ws/README.md)**: `engine/transport/ws` — WebSocket server implementation for real-time communication.
 
-Each library exposes standardized initialization and shutdown APIs, and includes patterns for logging, context propagation, and best practices.
+## 🛠 Core & Utilities
+
+- **[Common](common/README.md)**: `engine/common` — Base repositories, use cases, and shared utilities.
+- **[Validation](validate/README.md)**: `engine/validate` — Input validation and assertions.
+- **[Logging](log/README.md)**: `engine/log` — Environment-aware structure logging.
 
 ---
 
@@ -54,7 +60,7 @@ import (
 
 func init() {
     godotenv.Load()
-	engine.Init(proto.ServiceName)
+	engine.Init("service-name", "v1.0.0", false)
 }
 
 func main() {

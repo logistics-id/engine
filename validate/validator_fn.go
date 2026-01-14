@@ -172,10 +172,31 @@ func validNotIn(value interface{}, param string) (v bool, m string) {
 func validUUID(value interface{}, _ string) (v bool, m string) {
 	uuidRegex := regexp.MustCompile(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$`)
 
-	if v = uuidRegex.MatchString(value.(string)); !v {
+	// Handle pointer types - accept both string and *string
+	var str string
+	switch val := value.(type) {
+	case string:
+		str = val
+	case *string:
+		if val == nil {
+			return false, "The %s must be a valid UUID"
+		}
+		str = *val
+	default:
+		return false, "The %s must be a valid UUID"
+	}
+
+	if v = uuidRegex.MatchString(str); !v {
 		m = "The %s must be a valid UUID"
 	}
 
+	return
+}
+
+func validPassword(value interface{}, _ string) (v bool, m string) {
+	if v = IsPassword(value); !v {
+		m = "The %s must be at least 8 characters and contain uppercase, lowercase, number, and special character. Common passwords are not allowed"
+	}
 	return
 }
 
